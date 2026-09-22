@@ -13,6 +13,7 @@ const WHATSAPP_NUMBER = '919334638282';
 const NAV_LINKS = [
   { href: '/', key: 'home' },
   { href: '/chat', key: 'aiAdvisor' },
+  { href: '/advisor', key: 'locationAdvisor' },
   { href: '/schemes', key: 'schemes' },
   { href: '/calculator', key: 'calculator' },
 ];
