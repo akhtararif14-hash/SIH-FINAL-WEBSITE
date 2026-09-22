@@ -298,7 +298,7 @@ export default function AdvisorClient() {
 
           {report.explanation && (
             <section style={{ ...s.card, background: 'var(--leaf-pale)' }}>
-              <div style={s.stepLabel}>🤖 AI advisor says</div>
+              <div style={s.stepLabel}> AI advisor says</div>
               <div style={{ whiteSpace: 'pre-wrap', lineHeight: 1.65, fontSize: 15 }}>{report.explanation}</div>
             </section>
           )}

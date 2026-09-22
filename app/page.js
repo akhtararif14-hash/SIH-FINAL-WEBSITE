@@ -21,17 +21,14 @@ export default function HomePage() {
       <div className="page" style={{ paddingTop: 40 }}>
         <div style={styles.grid}>
           <Link href="/chat" style={{ ...styles.card, ...styles.cardForest }}>
-            <span style={styles.cardEmoji}>🤖</span>
             <h3 style={styles.cardTitle}>{t('aiAdvisor')}</h3>
             <p style={styles.cardText}>{t('chatPlaceholder')}</p>
           </Link>
           <Link href="/schemes" style={{ ...styles.card, ...styles.cardBrown }}>
-            <span style={styles.cardEmoji}>📜</span>
             <h3 style={styles.cardTitle}>{t('exploreSchemes')}</h3>
             <p style={styles.cardText}>{t('exploreSchemesSub')}</p>
           </Link>
           <Link href="/calculator" style={{ ...styles.card, ...styles.cardTan }}>
-            <span style={styles.cardEmoji}>🧮</span>
             <h3 style={styles.cardTitle}>{t('calculator')}</h3>
             <p style={styles.cardText}>{t('projectCostLabel')}</p>
           </Link>

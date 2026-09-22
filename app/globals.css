@@ -20,6 +20,7 @@
   --radius-lg: 20px;
   --radius-md: 14px;
   --radius-sm: 10px;
+
 }
 
 * {
@@ -64,3 +65,14 @@ button {
 .eyebrow-free-title {
   font-family: var(--font-display);
 }
+/* Formatted AI answers in chat */
+.md p { margin: 0 0 8px; }
+.md p:last-child { margin-bottom: 0; }
+.md strong { color: var(--forest-dark); }
+.md h1, .md h2, .md h3 { font-size: 15.5px; color: var(--brown); margin: 12px 0 6px; }
+.md ul, .md ol { margin: 4px 0 10px; padding-left: 20px; }
+.md li { margin: 3px 0; }
+.md table { border-collapse: collapse; width: 100%; margin: 8px 0 10px; font-size: 13.5px; }
+.md th, .md td { border: 1px solid var(--border); padding: 7px 9px; text-align: left; vertical-align: top; }
+.md th { background: var(--leaf-pale); color: var(--forest-dark); }
+.md tr:nth-child(even) td { background: #fdf8f0; }

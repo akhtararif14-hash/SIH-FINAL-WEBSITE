@@ -3,6 +3,8 @@
 import { useState, useRef, useEffect } from 'react';
 import { useSearchParams } from 'next/navigation';
 import { useTranslate } from '@/lib/LanguageProvider';
+import ReactMarkdown from 'react-markdown';
+import remarkGfm from 'remark-gfm';
 
 export default function ChatClient() {
   const { t } = useTranslate();
@@ -130,9 +132,26 @@ export default function ChatClient() {
       <div style={styles.messages}>
         {messages.map((m) => (
           <div key={m.id} style={{ ...styles.bubbleRow, justifyContent: m.sender === 'user' ? 'flex-end' : 'flex-start' }}>
-            <div style={{ ...styles.bubble, ...(m.sender === 'user' ? styles.userBubble : styles.botBubble) }}>
-              {m.text}
+           <div style={{ ...styles.bubble, ...(m.sender === 'user' ? styles.userBubble : styles.botBubble) }}>
+  {m.sender === 'bot' ? (
+    <div className="md">
+      <ReactMarkdown
+        remarkPlugins={[remarkGfm]}
+        components={{
+          table: (props) => (
+            <div style={{ overflowX: 'auto' }}>
+              <table {...props} />
             </div>
+          ),
+        }}
+      >
+        {m.text}
+      </ReactMarkdown>
+    </div>
+  ) : (
+    m.text
+  )}
+</div>
           </div>
         ))}
         {loading && <div style={styles.loadingText}>Thinking…</div>}
@@ -224,4 +243,13 @@ const styles = {
     fontWeight: 700,
     fontSize: 14.5,
   },
+  bubble: {
+  maxWidth: '85%',
+  padding: '10px 14px',
+  borderRadius: 14,
+  fontSize: 14.5,
+  lineHeight: 1.55,
+},
+userBubble: { background: 'var(--forest)', color: 'var(--white)' },
+botBubble: { background: 'var(--card)', color: 'var(--ink)', border: '1px solid var(--border)' },
 };
