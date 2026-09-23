@@ -10,11 +10,20 @@ import { useState } from 'react';
 import dynamic from 'next/dynamic';
 import { useTranslate } from '@/lib/LanguageProvider';
 
-const AdvisorMap = dynamic(() => import('@/components/advisor/AdvisorMap'), {
-  ssr: false,
-  loading: () => <div style={{ height: 380, borderRadius: 14, background: 'var(--leaf-pale)' }} />,
-});
+// Use Google Maps when a browser key exists, otherwise fall back to the free
+// OpenStreetMap version. This way the map never disappears during a demo.
+const USE_GOOGLE = Boolean(process.env.NEXT_PUBLIC_GOOGLE_MAPS_BROWSER_KEY);
 
+const AdvisorMap = dynamic(
+  () =>
+    USE_GOOGLE
+      ? import('@/components/advisor/AdvisorMapGoogle')
+      : import('@/components/advisor/AdvisorMap'),
+  {
+    ssr: false,
+    loading: () => <div style={{ height: 380, borderRadius: 14, background: 'var(--leaf-pale)' }} />,
+  }
+);
 const INTERESTS = [
   { id: 'food', label: 'Food' },
   { id: 'retail', label: 'Retail' },
