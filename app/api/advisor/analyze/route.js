@@ -80,11 +80,31 @@ export async function POST(request) {
       data.placesCompetitors = {};
       top3.forEach((r, i) => {
         const g = lists[i];
-        const osmCount = osm.competitors[r.id]?.length || 0;
-        // OSM misses many small Indian shops, Google misses some too — keep the bigger list.
-        if (g && g.length >= osmCount) data.placesCompetitors[r.id] = g;
+        if (!g || !g.length) return;
+        const osmList = osm.competitors[r.id] || [];
+        // Google gives ratings but caps at 20 results; OpenStreetMap has no
+        // ratings but sometimes lists more. Use Google's rated shops, and if
+        // OSM found more, add the extra ones as "unknown strength" so the
+        // count stays right AND we keep the ratings.
+        const extra = Math.max(0, osmList.length - g.length);
+        data.placesCompetitors[r.id] = [
+          ...g,
+          ...osmList.slice(0, extra).map((c) => ({ ...c, rating: null, reviews: 0 })),
+        ];
       });
       ranked = rankBusinesses(data, { budget, interests });
+    }
+
+    // Say plainly whether Google data was used, so the report is honest about it.
+    const googleUsed = Object.keys(data.placesCompetitors || {}).length;
+    if (!placesAvailable()) {
+      warnings.push(
+        'Competitor data is from OpenStreetMap only. Add GOOGLE_MAPS_API_KEY in your environment variables for real shop lists and star ratings.'
+      );
+    } else if (!googleUsed) {
+      warnings.push(
+        'Google Places returned nothing for the top ideas here, so competitor counts come from OpenStreetMap. Check the server log for the reason (a common one is an API key restricted to websites — a server key must not have a website restriction).'
+      );
     }
 
     // Pull out what customers complain about near here, for the AI to summarise.
