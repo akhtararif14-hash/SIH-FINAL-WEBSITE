@@ -66,7 +66,8 @@ export async function POST(request) {
       );
     }
 
-    const data = { osm, population, climate, radius, budget, anchors: osm.anchors, access: osm.access, placesCompetitors: null };
+    // Score against the radius actually studied, so the numbers stay honest.
+    const data = { osm, population, climate, radius: osm.usedRadius || radius, budget, anchors: osm.anchors, access: osm.access, placesCompetitors: null };
     let ranked = rankBusinesses(data, { budget, interests });
 
     // Step 2 (optional): if a Google key exists, fetch real ratings for the
@@ -111,7 +112,12 @@ export async function POST(request) {
       : shopsPer1000 < 0.5 ? 'low'
       : shopsPer1000 < 2 ? 'medium'
       : 'good';
-          if (osm.truncated) {
+    if (osm.reducedRadius) {
+      warnings.push(
+        `The map servers were busy, so we studied a smaller ${(osm.usedRadius / 1000).toFixed(1)} km circle instead of ${(radius / 1000).toFixed(1)} km. Shop counts are for that smaller area — try again in a minute for the full circle.`
+      );
+    }
+    if (osm.truncated) {
       warnings.push(
         `This circle is very busy — we read the first ${osm.elementCount.toLocaleString('en-IN')} map features only, so shop counts may be slightly low. A smaller radius gives a sharper picture.`
       );
@@ -127,7 +133,9 @@ export async function POST(request) {
       dataConfidence,
       mappedShops,
       location: { lat, lng, label: place?.label || `${lat.toFixed(4)}, ${lng.toFixed(4)}`, ...(place || {}) },
-      radius,
+      // The circle we actually studied (may be smaller if the map servers were busy).
+      radius: osm.usedRadius || radius,
+      requestedRadius: radius,
       budget,
       interests,
       population,
