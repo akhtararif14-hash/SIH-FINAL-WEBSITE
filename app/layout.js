@@ -15,7 +15,15 @@ export const metadata = {
 
 export default function RootLayout({ children }) {
   return (
-    <html lang="en" className={`${lora.variable} ${inter.variable}`}>
+        <html lang="en" className={`${lora.variable} ${inter.variable}`}>
+      <head>
+        {/* Open the network connection to the map servers early, so map tiles
+            start downloading the moment the map code is ready. */}
+        <link rel="preconnect" href="https://tile.openstreetmap.org" crossOrigin="" />
+        <link rel="preconnect" href="https://maps.googleapis.com" crossOrigin="" />
+        <link rel="preconnect" href="https://maps.gstatic.com" crossOrigin="" />
+        <link rel="dns-prefetch" href="https://overpass-api.de" />
+      </head>
       <body>
         <AuthProvider>
           <LanguageProvider>

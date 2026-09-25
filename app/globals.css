@@ -76,3 +76,20 @@ button {
 .md th, .md td { border: 1px solid var(--border); padding: 7px 9px; text-align: left; vertical-align: top; }
 .md th { background: var(--leaf-pale); color: var(--forest-dark); }
 .md tr:nth-child(even) td { background: #fdf8f0; }
+/* Map placeholder: shows instantly while the map code loads */
+.map-skeleton {
+  width: 100%;
+  background: linear-gradient(100deg, var(--leaf-pale) 30%, #f7f2e8 50%, var(--leaf-pale) 70%);
+  background-size: 200% 100%;
+  animation: map-shimmer 1.2s linear infinite;
+  border: 1px solid var(--border);
+}
+
+@keyframes map-shimmer {
+  from { background-position: 200% 0; }
+  to { background-position: -200% 0; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .map-skeleton { animation: none; }
+}

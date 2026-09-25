@@ -1,7 +1,7 @@
 // app/api/advisor/analyze/route.js
 // POST {
 //   lat, lng,              // required — the pin on the map
-//   radius = 1000,         // metres, 300–3000
+//   radius = 5000,         // metres, 500–10000 (slider on the page uses 5–10 km)
 //   budget,                // ₹, optional
 //   interests = [],        // ['food','retail','services','health','education'], optional
 //   lang = 'en',           // explanation language
@@ -18,6 +18,8 @@ import {
   reverseGeocode,
   fetchPlacesCompetitors,
   placesAvailable,
+  placesTopN,
+  placesReviewsEnabled,
 } from '@/lib/advisor/sources';
 import { rankBusinesses } from '@/lib/advisor/scoring';
 import { explainReport } from '@/lib/advisor/explain';
@@ -42,7 +44,7 @@ export async function POST(request) {
     if (!Number.isFinite(lat) || !Number.isFinite(lng) || Math.abs(lat) > 90 || Math.abs(lng) > 180) {
       return Response.json({ error: 'Valid "lat" and "lng" are required' }, { status: 400 });
     }
-    const radius = Math.min(3000, Math.max(300, Number(body.radius) || 1000));
+    const radius = Math.min(10000, Math.max(500, Number(body.radius) || 5000));
     const budget = Number(body.budget) > 0 ? Number(body.budget) : null;
     const interests = Array.isArray(body.interests) ? body.interests.filter((c) => CATEGORIES.includes(c)) : [];
     const lang = ['en', 'hi', 'ur', 'bn'].includes(body.lang) ? body.lang : 'en';
@@ -64,13 +66,13 @@ export async function POST(request) {
       );
     }
 
-    const data = { osm, population, climate, placesCompetitors: null };
+    const data = { osm, population, climate, radius, budget, anchors: osm.anchors, access: osm.access, placesCompetitors: null };
     let ranked = rankBusinesses(data, { budget, interests });
 
     // Step 2 (optional): if a Google key exists, fetch real ratings for the
     // top 3 ideas only, then re-score. Keeps you inside the free allowance.
     if (placesAvailable()) {
-      const top3 = ranked.filter((r) => r.eligible).slice(0, 3);
+      const top3 = ranked.filter((r) => r.eligible).slice(0, placesTopN());
       const lists = await Promise.all(
         top3.map((r) => safe(`Google Places (${r.name})`, fetchPlacesCompetitors(r.id, lat, lng, radius), warnings))
       );
@@ -82,6 +84,18 @@ export async function POST(request) {
         if (g && g.length >= osmCount) data.placesCompetitors[r.id] = g;
       });
       ranked = rankBusinesses(data, { budget, interests });
+    }
+
+    // Pull out what customers complain about near here, for the AI to summarise.
+    const reviewNotes = [];
+    if (placesReviewsEnabled() && data.placesCompetitors) {
+      for (const [bizId, list] of Object.entries(data.placesCompetitors)) {
+        for (const c of list) {
+          for (const rv of c.reviewTexts || []) {
+            reviewNotes.push({ business: bizId, shop: c.name, rating: rv.rating, text: rv.text });
+          }
+        }
+      }
     }
 
     // Data-coverage check: in many Indian neighbourhoods OpenStreetMap has only a
@@ -104,6 +118,7 @@ export async function POST(request) {
     }
 
     const report = {
+      reviewNotes: reviewNotes.slice(0, 24),
       dataConfidence,
       mappedShops,
       location: { lat, lng, label: place?.label || `${lat.toFixed(4)}, ${lng.toFixed(4)}`, ...(place || {}) },
