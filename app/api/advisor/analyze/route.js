@@ -111,6 +111,11 @@ export async function POST(request) {
       : shopsPer1000 < 0.5 ? 'low'
       : shopsPer1000 < 2 ? 'medium'
       : 'good';
+          if (osm.truncated) {
+      warnings.push(
+        `This circle is very busy — we read the first ${osm.elementCount.toLocaleString('en-IN')} map features only, so shop counts may be slightly low. A smaller radius gives a sharper picture.`
+      );
+    }
     if (dataConfidence === 'low') {
       warnings.push(
         `Only ${mappedShops} shop${mappedShops === 1 ? "" : "s"} ${mappedShops === 1 ? "is" : "are"} mapped on OpenStreetMap for ${population.people.toLocaleString('en-IN')} people here, so competitor counts are probably too low. Add a Google Places key or check the street in person.`
