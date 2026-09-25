@@ -459,3 +459,537 @@ function AnalyzingPanel({ radius }) {
     </div>
   );
 }
+function Stat({ label, value, sub }) {
+  return (
+    <div style={s.stat}>
+      <div style={{ fontSize: 12.5, color: 'var(--ink-muted)' }}>{label}</div>
+      <div style={{ fontSize: 22, fontWeight: 700, color: 'var(--forest)' }}>{value}</div>
+      {sub && <div style={{ fontSize: 12, color: 'var(--ink-muted)' }}>{sub}</div>}
+    </div>
+  );
+}
+
+function Bar({ label, value, color }) {
+  return (
+    <div style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 13 }}>
+      <span style={{ width: 150, color: 'var(--ink-muted)' }}>{label}</span>
+      <div style={{ flex: 1, height: 10, background: 'var(--border)', borderRadius: 5 }}>
+        <div style={{ width: `${Math.round(value * 100)}%`, height: '100%', background: color, borderRadius: 5 }} />
+      </div>
+      <span style={{ width: 40, textAlign: 'right' }}>{value.toFixed(2)}</span>
+    </div>
+  );
+}
+
+const RISK_COLORS = { low: '#2e7d32', medium: '#b7791f', high: '#c0392b', unknown: '#7a6f63' };
+
+// A small "i" button plus the explanation panel it opens.
+function InfoBlock({ label, info, inline = false }) {
+  const [open, setOpen] = useState(false);
+  if (!info) return null;
+  return (
+    <>
+      <button
+        type="button"
+        aria-label={`What is ${label}?`}
+        title={`What is ${label}?`}
+        onClick={(e) => {
+          e.stopPropagation();
+          setOpen((v) => !v);
+        }}
+        style={{ ...s.infoBtn, ...(open ? s.infoBtnOn : {}), ...(inline ? { marginLeft: 6 } : {}) }}
+      >
+        i
+      </button>
+      {open && (
+        <div style={s.infoPanel} onClick={(e) => e.stopPropagation()}>
+          <div style={{ fontWeight: 700, color: 'var(--forest)', marginBottom: 6 }}>{info.title}</div>
+          <p style={s.infoLine}><b>What it means:</b> {info.what}</p>
+          <p style={s.infoLine}><b>How we got it:</b> {info.how}</p>
+          <p style={s.infoLine}><b>Data source:</b> {info.source}</p>
+          {info.tip && <p style={{ ...s.infoLine, color: 'var(--forest-dark)' }}><b>Tip:</b> {info.tip}</p>}
+        </div>
+      )}
+    </>
+  );
+}
+
+// One score line: label, bar, value and its info button.
+function MetricRow({ label, value, color, infoKey, r, ctx, indent = false }) {
+  return (
+    <div style={{ marginBottom: 2 }}>
+      <div style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 13 }}>
+        <span style={{ width: 150, color: 'var(--ink-muted)', paddingLeft: indent ? 12 : 0 }}>{label}</span>
+        <div style={{ flex: 1, height: 10, background: 'var(--border)', borderRadius: 5 }}>
+          <div style={{ width: `${Math.round(value * 100)}%`, height: '100%', background: color, borderRadius: 5 }} />
+        </div>
+        <span style={{ width: 38, textAlign: 'right' }}>{value.toFixed(2)}</span>
+        <InfoBlock label={label} info={getParamInfo(infoKey, r, ctx, r.finance)} />
+      </div>
+    </div>
+  );
+}
+
+const SWOT_BOXES = [
+  { key: 'strengths', title: 'Strengths', sub: 'good here, now', bg: '#eaf3ec', border: '#7cb68c', color: '#1f3b28' },
+  { key: 'weaknesses', title: 'Weaknesses', sub: 'missing here', bg: '#fdecea', border: '#e6a9a2', color: '#7a2318' },
+  { key: 'opportunities', title: 'Opportunities', sub: 'gaps you can use', bg: '#f3eefb', border: '#b9a6de', color: '#3f2a63' },
+  { key: 'threats', title: 'Threats', sub: 'what could go wrong', bg: '#fdf3e2', border: '#e0bc7c', color: '#7a5312' },
+];
+
+function SwotGrid({ swot }) {
+  if (!swot) return null;
+  return (
+    <div style={s.swotGrid}>
+      {SWOT_BOXES.map((box) => {
+        const items = swot[box.key] || [];
+        return (
+          <div key={box.key} style={{ ...s.swotBox, background: box.bg, borderColor: box.border }}>
+            <div style={{ fontWeight: 700, color: box.color, fontSize: 14 }}>
+              {box.title} <span style={{ fontWeight: 400, fontSize: 11.5, opacity: 0.8 }}>· {box.sub}</span>
+            </div>
+            {items.length ? (
+              <ul style={{ margin: '6px 0 0', paddingLeft: 16, color: box.color }}>
+                {items.map((t, i) => (
+                  <li key={i} style={{ fontSize: 12.5, marginBottom: 4, lineHeight: 1.45 }}>{t}</li>
+                ))}
+              </ul>
+            ) : (
+              <div style={{ fontSize: 12.5, opacity: 0.7, marginTop: 6, color: box.color }}>Nothing notable found.</div>
+            )}
+          </div>
+        );
+      })}
+    </div>
+  );
+}
+
+const VERDICT_COLORS = { good: '#2e7d32', warn: '#b7791f', bad: '#c0392b' };
+
+function FinancePanel({ r, ctx }) {
+  const f = r.finance;
+  if (!f) return null;
+  const money = (n) => (n == null ? '—' : rupees(n));
+
+  return (
+    <div style={{ marginTop: 14 }}>
+      <div style={s.sectionTitle}>
+        Money needed to start
+        <InfoBlock label="total investment" info={getParamInfo('investment', r, ctx, f)} inline />
+      </div>
+      <table style={s.table}>
+        <tbody>
+          {f.setup.map((row) => (
+            <tr key={row.label}>
+              <td style={s.td}>
+                {row.label}
+                <div style={{ fontSize: 11.5, color: 'var(--ink-muted)' }}>{row.note}</div>
+              </td>
+              <td style={{ ...s.td, textAlign: 'right', whiteSpace: 'nowrap' }}>{money(row.amount)}</td>
+            </tr>
+          ))}
+          <tr>
+            <td style={{ ...s.td, fontWeight: 700 }}>Total investment</td>
+            <td style={{ ...s.td, textAlign: 'right', fontWeight: 700, color: 'var(--forest)' }}>{money(f.totalInvestment)}</td>
+          </tr>
+        </tbody>
+      </table>
+
+      <div style={s.sectionTitle}>
+        Every month, if it runs as expected
+        <InfoBlock label="monthly sales" info={getParamInfo('revenue', r, ctx, f)} inline />
+      </div>
+      <table style={s.table}>
+        <tbody>
+          <tr>
+            <td style={s.td}>
+              Sales{' '}
+              <span style={{ color: 'var(--ink-muted)', fontSize: 12 }}>
+                ({f.customers ?? '—'} {f.model === 'monthly' ? 'members' : 'customers/day'} × {rupees(f.ticket)}
+                {f.model === 'monthly' ? '/month' : ' × 30 days'})
+                {f.capacityLimited && (
+                  <span style={{ color: 'var(--forest)' }}> · capped at what one outlet can serve ({f.capacity})</span>
+                )}
+              </span>
+            </td>
+            <td style={{ ...s.td, textAlign: 'right' }}>{money(f.monthlyRevenue)}</td>
+          </tr>
+          <tr>
+            <td style={s.td}>Gross profit <span style={{ color: 'var(--ink-muted)', fontSize: 12 }}>({Math.round(f.margin * 100)}% margin)</span></td>
+            <td style={{ ...s.td, textAlign: 'right' }}>{money(f.grossProfit)}</td>
+          </tr>
+          <tr>
+            <td style={s.td}>Rent <span style={{ color: 'var(--ink-muted)', fontSize: 12 }}>({f.areaSqft} sqft × ₹{f.rentRate}/sqft, {f.rentTier})</span></td>
+            <td style={{ ...s.td, textAlign: 'right' }}>− {money(f.monthlyRent)}</td>
+          </tr>
+          <tr>
+            <td style={s.td}>Staff salaries</td>
+            <td style={{ ...s.td, textAlign: 'right' }}>− {money(f.staffCost)}</td>
+          </tr>
+          <tr>
+            <td style={s.td}>Electricity, water, internet</td>
+            <td style={{ ...s.td, textAlign: 'right' }}>− {money(f.utilities)}</td>
+          </tr>
+          <tr>
+            <td style={{ ...s.td, fontWeight: 700 }}>Profit left with the owner</td>
+            <td style={{ ...s.td, textAlign: 'right', fontWeight: 700, color: f.netProfit > 0 ? '#2e7d32' : '#c0392b' }}>
+              {money(f.netProfit)}
+            </td>
+          </tr>
+        </tbody>
+      </table>
+
+      <div style={s.moneyRow}>
+        <div style={s.moneyCell}>
+          <div style={s.moneyLabel}>
+            Payback time <InfoBlock label="payback time" info={getParamInfo('payback', r, ctx, f)} inline />
+          </div>
+          <div style={s.moneyValue}>{f.paybackMonths ? `${f.paybackMonths} months` : 'not reached'}</div>
+        </div>
+        <div style={s.moneyCell}>
+          <div style={s.moneyLabel}>
+            Break-even sales <InfoBlock label="break-even sales" info={getParamInfo('breakeven', r, ctx, f)} inline />
+          </div>
+          <div style={s.moneyValue}>{money(f.breakEvenSales)}/month</div>
+          <div style={{ fontSize: 11.5, color: 'var(--ink-muted)' }}>
+            about {f.breakEvenCustomersPerDay} {f.model === 'monthly' ? 'members' : 'customers a day'}
+          </div>
+        </div>
+        <div style={s.moneyCell}>
+          <div style={s.moneyLabel}>First-year profit</div>
+          <div style={s.moneyValue}>{f.netProfit > 0 ? money(f.netProfit * 12) : '—'}</div>
+          <div style={{ fontSize: 11.5, color: 'var(--ink-muted)' }}>if sales stay steady</div>
+        </div>
+      </div>
+
+      {f.verdict.map((v, i) => (
+        <div key={i} style={{ fontSize: 13, color: VERDICT_COLORS[v.level], marginTop: 6 }}>
+          {v.level === 'good' ? '✓' : v.level === 'warn' ? '!' : '×'} {v.text}
+        </div>
+      ))}
+
+      <details style={{ marginTop: 10 }}>
+        <summary style={{ cursor: 'pointer', fontSize: 12.5, color: 'var(--ink-muted)' }}>
+          What we assumed (change these in lib/advisor/finance.js)
+        </summary>
+        <ul style={{ margin: '6px 0 0', paddingLeft: 18, fontSize: 12.5, color: 'var(--ink-muted)' }}>
+          {f.assumptions.map((a, i) => (
+            <li key={i} style={{ marginBottom: 3 }}>{a}</li>
+          ))}
+          <li>Licence needed: {f.licenceName}</li>
+        </ul>
+        <div style={{ fontSize: 12.5, color: 'var(--ink-muted)', marginTop: 6 }}>
+          These are typical figures, not quotes. Confirm rent, stock and licence costs locally before investing.
+        </div>
+      </details>
+    </div>
+  );
+}
+
+// Real Google reviews of the competing shops, when the Places key allows them.
+function ReviewNotes({ r, ctx }) {
+  const notes = (ctx?.reviewNotes || []).filter((n) => n.business === r.id);
+  if (!notes.length) return null;
+  return (
+    <div style={{ marginTop: 14 }}>
+      <div style={s.sectionTitle}>What customers say about nearby {r.name.split(' /')[0].toLowerCase()}s</div>
+      <div style={{ display: 'grid', gap: 6 }}>
+        {notes.slice(0, 6).map((n, i) => (
+          <div key={i} style={s.reviewCard}>
+            <div style={{ fontSize: 12, color: 'var(--ink-muted)' }}>
+              {n.shop}
+              {n.rating != null && <> · {n.rating}★</>}
+            </div>
+            <div style={{ fontSize: 13, lineHeight: 1.5 }}>{n.text}</div>
+          </div>
+        ))}
+      </div>
+      <div style={{ fontSize: 11.5, color: 'var(--ink-muted)', marginTop: 6 }}>
+        Reviews from Google. Read what people complain about, then do that one thing better.
+      </div>
+    </div>
+  );
+}
+
+function BusinessCard({ rank, r, ctx, name, selected, onClick }) {
+  const b = r.breakdown;
+  const f = r.finance;
+  return (
+    <div onClick={onClick} style={{ ...s.biz, ...(selected ? s.bizSelected : {}) }}>
+      <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+        <div style={s.rank}>{rank}</div>
+        <div style={{ flex: 1 }}>
+          <div style={{ fontWeight: 700, fontSize: 16 }}>{name}</div>
+          <div style={{ fontSize: 13, color: 'var(--ink-muted)' }}>
+            {r.competitorCount} existing shop{r.competitorCount === 1 ? '' : 's'} nearby ({r.competitorSource === 'google' ? 'Google' : 'OpenStreetMap'})
+            {f && <> · needs {rupees(f.totalInvestment)}</>}
+            {f && f.netProfit > 0 && <> · about {rupees(f.netProfit)}/month profit</>}
+          </div>
+        </div>
+        <div style={{ textAlign: 'right' }}>
+          <div style={{ fontSize: 26, fontWeight: 800, color: 'var(--forest)' }}>{r.score}</div>
+          <div style={{ fontSize: 11.5, color: RISK_COLORS[r.risk.level] }}>
+            {r.risk.level === 'unknown' ? 'risk: n/a' : `${r.risk.level} risk`}
+          </div>
+        </div>
+      </div>
+
+      {selected && (
+        <div style={{ marginTop: 12 }}>
+          <div style={s.sectionTitle}>
+            How this score was built
+            <InfoBlock label="opportunity score" info={getParamInfo('score', r, ctx, f)} inline />
+          </div>
+          <MetricRow label="Demand" value={b.demand} color="var(--forest)" infoKey="demand" r={r} ctx={ctx} />
+          <MetricRow label="· population" value={b.population} color="var(--leaf)" infoKey="population" r={r} ctx={ctx} indent />
+          <MetricRow label="· nearby places" value={b.anchors} color="var(--leaf)" infoKey="anchors" r={r} ctx={ctx} indent />
+          <MetricRow label="· accessibility" value={b.access} color="var(--leaf)" infoKey="access" r={r} ctx={ctx} indent />
+          <MetricRow label="Low competition" value={b.competition} color="var(--tan)" infoKey="competition" r={r} ctx={ctx} />
+          {b.environment < 1 && (
+            <MetricRow label="Weather fit" value={b.environment} color="var(--brown)" infoKey="environment" r={r} ctx={ctx} />
+          )}
+
+          <div style={{ fontSize: 12.5, color: 'var(--ink-muted)', marginTop: 6 }}>
+            Score = 100 × {b.demand} × {b.competition}
+            {b.environment < 1 ? ` × ${b.environment}` : ''} = {r.score}
+            {b.populationMissing && <> · population unavailable, neutral value used</>}
+            {r.note && <> · Note: {r.note}</>}
+          </div>
+
+          <div style={{ ...s.sectionTitle, marginTop: 16 }}>
+            Dependence risk
+            <InfoBlock label="dependence risk" info={getParamInfo('risk', r, ctx, f)} inline />
+            <span style={{ color: RISK_COLORS[r.risk.level], fontWeight: 700, marginLeft: 6 }}>
+              {r.risk.level}
+            </span>
+          </div>
+
+          <div style={{ ...s.sectionTitle, marginTop: 16 }}>SWOT analysis for this location</div>
+          <SwotGrid swot={r.swot} />
+
+          <ReviewNotes r={r} ctx={ctx} />
+          <FinancePanel r={r} ctx={ctx} />
+        </div>
+      )}
+    </div>
+  );
+}
+
+function CompareTable({ a, b, displayName }) {
+  const rows = a.ranked
+    .filter((r) => r.eligible)
+    .slice(0, 8)
+    .map((ra) => ({ ra, rb: b.ranked.find((x) => x.id === ra.id) }));
+  const best = rows[0];
+  const diff = best && best.rb ? best.rb.score - best.ra.score : 0;
+  // "% higher" is measured against the LOWER of the two scores.
+  const low = best && best.rb ? Math.min(best.ra.score, best.rb.score) : 0;
+  const pct = low > 0 ? Math.round((Math.abs(diff) / low) * 100) : null;
+
+  return (
+    <>
+      {best && best.rb && (
+        <p style={{ fontSize: 15.5, marginTop: 0 }}>
+          For <b>{displayName(best.ra)}</b>: location <b>{diff > 0 ? 'B' : 'A'}</b> scores{' '}
+          <b>{diff === 0 ? 'the same' : pct != null ? `${pct}% higher` : 'higher'}</b> ({best.ra.score} vs {best.rb.score}).
+          {diff > 0 && best.ra.breakdown.demand > best.rb.breakdown.demand && ' A has more demand, but B has far less competition.'}
+        </p>
+      )}
+      <table style={s.table}>
+        <thead>
+          <tr>
+            <th style={s.th}>Business</th>
+            <th style={s.th}>A</th>
+            <th style={s.th}>B</th>
+            <th style={s.th}>Shops A / B</th>
+            <th style={s.th}>Better</th>
+          </tr>
+        </thead>
+        <tbody>
+          {rows.map(({ ra, rb }) => (
+            <tr key={ra.id}>
+              <td style={s.td}>{displayName(ra)}</td>
+              <td style={s.td}>{ra.score}</td>
+              <td style={s.td}>{rb ? rb.score : '–'}</td>
+              <td style={s.td}>
+                {ra.competitorCount} / {rb ? rb.competitorCount : '–'}
+              </td>
+              <td style={{ ...s.td, fontWeight: 700 }}>{!rb ? '–' : rb.score > ra.score ? 'B' : rb.score < ra.score ? 'A' : '='}</td>
+            </tr>
+          ))}
+        </tbody>
+      </table>
+    </>
+  );
+}
+
+const s = {
+  title: { fontFamily: 'var(--font-display)', fontSize: 28, color: 'var(--brown)', margin: '0 0 6px' },
+  subtitle: { color: 'var(--ink-muted)', margin: '0 0 20px' },
+  card: {
+    background: 'var(--card)',
+    border: '1px solid var(--border)',
+    borderRadius: 'var(--radius-md)',
+    padding: 20,
+    marginBottom: 16,
+  },
+  stepLabel: { fontWeight: 700, color: 'var(--forest)', marginBottom: 12, fontSize: 15 },
+  row: { display: 'flex', gap: 8, flexWrap: 'wrap', alignItems: 'center' },
+  input: {
+    flex: 1,
+    minWidth: 180,
+    border: '1px solid var(--tan)',
+    borderRadius: 10,
+    padding: '10px 14px',
+    fontSize: 15,
+    background: 'var(--white)',
+    color: 'var(--ink)',
+  },
+  btnPrimary: {
+    background: 'var(--forest)',
+    color: 'var(--white)',
+    border: 'none',
+    borderRadius: 10,
+    padding: '10px 18px',
+    fontWeight: 600,
+    fontSize: 14.5,
+  },
+  btnSecondary: {
+    background: 'var(--white)',
+    color: 'var(--forest)',
+    border: '1px solid var(--forest)',
+    borderRadius: 10,
+    padding: '9px 14px',
+    fontWeight: 600,
+    fontSize: 14,
+  },
+  btnBig: {
+    marginTop: 18,
+    width: '100%',
+    background: 'var(--forest)',
+    color: 'var(--white)',
+    border: 'none',
+    borderRadius: 12,
+    padding: '14px 18px',
+    fontWeight: 700,
+    fontSize: 16,
+  },
+  results: { marginTop: 8, border: '1px solid var(--border)', borderRadius: 10, overflow: 'hidden' },
+  resultItem: {
+    display: 'block',
+    width: '100%',
+    textAlign: 'left',
+    background: 'var(--white)',
+    border: 'none',
+    borderBottom: '1px solid var(--border)',
+    padding: '9px 12px',
+    fontSize: 13.5,
+    color: 'var(--ink)',
+  },
+  pickRow: { display: 'flex', gap: 8, alignItems: 'center', margin: '14px 0 10px', flexWrap: 'wrap' },
+  chip: {
+    background: 'var(--white)',
+    border: '1px solid var(--border)',
+    borderRadius: 20,
+    padding: '6px 14px',
+    fontSize: 13.5,
+    color: 'var(--ink)',
+  },
+  chipOn: { background: 'var(--forest)', color: 'var(--white)', borderColor: 'var(--forest)' },
+  pinText: { fontSize: 13, color: 'var(--ink-muted)', marginTop: 8 },
+  grid2: { display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(260px, 1fr))', gap: 16 },
+  field: { display: 'flex', flexDirection: 'column', gap: 6 },
+  fieldLabel: { fontSize: 13.5, color: 'var(--ink-muted)', fontWeight: 600 },
+  loadingBox: {
+    marginTop: 14,
+    background: 'var(--leaf-pale)',
+    border: '1px solid var(--leaf)',
+    borderRadius: 12,
+    padding: 16,
+  },
+  error: {
+    background: '#fdecea',
+    color: 'var(--danger)',
+    border: '1px solid #f5c6c0',
+    borderRadius: 10,
+    padding: '10px 14px',
+    marginBottom: 16,
+  },
+  statGrid: { display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(190px, 1fr))', gap: 12 },
+  stat: { background: 'var(--white)', border: '1px solid var(--border)', borderRadius: 10, padding: 12 },
+  tag: { background: 'var(--leaf-pale)', color: 'var(--forest-dark)', borderRadius: 14, padding: '4px 10px', fontSize: 13 },
+  warnings: { color: '#8a5a00', fontSize: 13, margin: '12px 0 0', paddingLeft: 18 },
+  biz: {
+    background: 'var(--white)',
+    border: '1px solid var(--border)',
+    borderRadius: 12,
+    padding: 14,
+    marginBottom: 10,
+    cursor: 'pointer',
+  },
+  bizSelected: { borderColor: 'var(--forest)', boxShadow: '0 0 0 2px var(--leaf)' },
+  rank: {
+    width: 34,
+    height: 34,
+    borderRadius: 17,
+    background: 'var(--forest)',
+    color: 'var(--white)',
+    display: 'flex',
+    alignItems: 'center',
+    justifyContent: 'center',
+    fontWeight: 700,
+    flexShrink: 0,
+  },
+  sectionTitle: {
+    fontWeight: 700,
+    color: 'var(--forest)',
+    fontSize: 14,
+    margin: '10px 0 8px',
+    display: 'flex',
+    alignItems: 'center',
+    gap: 4,
+    flexWrap: 'wrap',
+  },
+  infoBtn: {
+    width: 18,
+    height: 18,
+    minWidth: 18,
+    borderRadius: 9,
+    border: '1px solid var(--tan)',
+    background: 'var(--white)',
+    color: 'var(--brown)',
+    fontSize: 11,
+    fontWeight: 700,
+    lineHeight: 1,
+    padding: 0,
+    fontStyle: 'italic',
+  },
+  infoBtnOn: { background: 'var(--forest)', color: 'var(--white)', borderColor: 'var(--forest)' },
+  infoPanel: {
+    background: 'var(--leaf-pale)',
+    border: '1px solid var(--leaf)',
+    borderRadius: 10,
+    padding: '10px 12px',
+    margin: '6px 0 10px',
+    fontSize: 12.5,
+    lineHeight: 1.55,
+    width: '100%',
+  },
+  infoLine: { margin: '0 0 5px' },
+  swotGrid: { display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(230px, 1fr))', gap: 10 },
+  swotBox: { border: '1px solid', borderRadius: 10, padding: '10px 12px' },
+  reviewCard: {
+    background: 'var(--white)',
+    border: '1px solid var(--border)',
+    borderLeft: '3px solid var(--tan)',
+    borderRadius: 0,
+    padding: '8px 10px',
+  },
+  moneyRow: { display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(160px, 1fr))', gap: 10, marginTop: 10 },
+  moneyCell: { background: 'var(--white)', border: '1px solid var(--border)', borderRadius: 10, padding: 10 },
+  moneyLabel: { fontSize: 12.5, color: 'var(--ink-muted)', display: 'flex', alignItems: 'center', gap: 4 },
+  moneyValue: { fontSize: 18, fontWeight: 700, color: 'var(--forest)' },
+  table: { width: '100%', borderCollapse: 'collapse', fontSize: 14 },
+  th: { textAlign: 'left', borderBottom: '2px solid var(--border)', padding: '8px 6px', color: 'var(--ink-muted)' },
+  td: { borderBottom: '1px solid var(--border)', padding: '8px 6px' },
+};
