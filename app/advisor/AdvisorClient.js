@@ -6,24 +6,27 @@
 //   3. gets ranked business ideas with the score breakdown + AI explanation
 //   4. can compare the same ideas at a second spot (B)
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import dynamic from 'next/dynamic';
 import { useTranslate } from '@/lib/LanguageProvider';
+import { getParamInfo } from '@/lib/advisor/paramInfo';
 
-// Use Google Maps when a browser key exists, otherwise fall back to the free
-// OpenStreetMap version. This way the map never disappears during a demo.
+// Use Google Maps when a browser key exists, otherwise the free OpenStreetMap one.
 const USE_GOOGLE = Boolean(process.env.NEXT_PUBLIC_GOOGLE_MAPS_BROWSER_KEY);
+const loadMapModule = () =>
+  USE_GOOGLE
+    ? import('@/components/advisor/AdvisorMapGoogle')
+    : import('@/components/advisor/AdvisorMap');
 
-const AdvisorMap = dynamic(
-  () =>
-    USE_GOOGLE
-      ? import('@/components/advisor/AdvisorMapGoogle')
-      : import('@/components/advisor/AdvisorMap'),
-  {
-    ssr: false,
-    loading: () => <div style={{ height: 380, borderRadius: 14, background: 'var(--leaf-pale)' }} />,
-  }
-);
+// Start downloading the map code the moment this page's script runs, instead of
+// waiting for React to mount the component. The map then appears almost at once.
+if (typeof window !== 'undefined') loadMapModule();
+
+const AdvisorMap = dynamic(loadMapModule, {
+  ssr: false,
+  loading: () => <div className="map-skeleton" style={{ height: 380, borderRadius: 14 }} />,
+});
+
 const INTERESTS = [
   { id: 'food', label: 'Food' },
   { id: 'retail', label: 'Retail' },
@@ -44,7 +47,7 @@ export default function AdvisorClient() {
   const [focus, setFocus] = useState(null);
   const [query, setQuery] = useState('');
   const [searchResults, setSearchResults] = useState([]);
-  const [radius, setRadius] = useState(1000);
+  const [radius, setRadius] = useState(5000);
   const [budget, setBudget] = useState('');
   const [interests, setInterests] = useState([]);
 
@@ -54,6 +57,10 @@ export default function AdvisorClient() {
   const [report, setReport] = useState(null);
   const [reportB, setReportB] = useState(null);
   const [selectedId, setSelectedId] = useState(null);
+
+  useEffect(() => {
+    loadMapModule();
+  }, []);
 
   const setPin = (lat, lng, label = '') => {
     const p = { lat, lng, label };
@@ -221,8 +228,11 @@ export default function AdvisorClient() {
         <div style={s.stepLabel}>2 · Your preferences</div>
         <div style={s.grid2}>
           <label style={s.field}>
-            <span style={s.fieldLabel}>Area to study: {radius >= 1000 ? `${radius / 1000} km` : `${radius} m`} around the pin</span>
-            <input type="range" min={300} max={3000} step={100} value={radius} onChange={(e) => setRadius(Number(e.target.value))} />
+            <span style={s.fieldLabel}>Area to study: {(radius / 1000).toFixed(1)} km around the pin</span>
+            <input type="range" min={5000} max={10000} step={500} value={radius} onChange={(e) => setRadius(Number(e.target.value))} />
+            <span style={{ fontSize: 12, color: 'var(--ink-muted)' }}>
+              5 km = your immediate market · 10 km = the wider town. A bigger circle takes longer to study.
+            </span>
           </label>
           <label style={s.field}>
             <span style={s.fieldLabel}>Budget (₹) — optional</span>
@@ -247,8 +257,9 @@ export default function AdvisorClient() {
         </div>
 
         <button style={{ ...s.btnBig, opacity: pinA ? 1 : 0.5 }} onClick={() => analyze('A')} disabled={!!loading}>
-          {loading === 'A' ? 'Studying this area… (10–20 s)' : 'Find the best business here →'}
+          {loading === 'A' ? 'Studying this area…' : 'Find the best business here →'}
         </button>
+        {loading === 'A' && <AnalyzingPanel radius={radius} />}
       </section>
 
       {error && <div style={s.error}>{error}</div>}
@@ -295,6 +306,7 @@ export default function AdvisorClient() {
                 {report.dataConfidence}
               </b>{' '}
               ({report.mappedShops} shop{report.mappedShops === 1 ? "" : "s"} mapped in this circle)
+              <InfoBlock label="data confidence" info={getParamInfo('confidence', eligible[0] || report.ranked[0], report)} />
             </div>
             {report.warnings?.length > 0 && (
               <ul style={s.warnings}>
@@ -307,7 +319,7 @@ export default function AdvisorClient() {
 
           {report.explanation && (
             <section style={{ ...s.card, background: 'var(--leaf-pale)' }}>
-              <div style={s.stepLabel}> AI advisor says</div>
+              <div style={s.stepLabel}>🤖 AI advisor says</div>
               <div style={{ whiteSpace: 'pre-wrap', lineHeight: 1.65, fontSize: 15 }}>{report.explanation}</div>
             </section>
           )}
@@ -320,6 +332,7 @@ export default function AdvisorClient() {
                 key={r.id}
                 rank={i + 1}
                 r={r}
+                ctx={report}
                 name={displayName(r)}
                 selected={r.id === selectedId}
                 onClick={() => setSelectedId(r.id)}
@@ -352,9 +365,12 @@ export default function AdvisorClient() {
                 </button>
               </p>
             ) : !reportB ? (
-              <button style={s.btnPrimary} onClick={() => analyze('B')} disabled={!!loading}>
-                {loading === 'B' ? 'Studying location B…' : 'Analyse location B'}
-              </button>
+              <>
+                <button style={s.btnPrimary} onClick={() => analyze('B')} disabled={!!loading}>
+                  {loading === 'B' ? 'Studying location B…' : 'Analyse location B'}
+                </button>
+                {loading === 'B' && <AnalyzingPanel radius={radius} />}
+              </>
             ) : (
               <CompareTable a={report} b={reportB} displayName={displayName} />
             )}
@@ -383,233 +399,63 @@ const ANCHOR_SHORT = {
   worship: 'places of worship',
 };
 
-function Stat({ label, value, sub }) {
-  return (
-    <div style={s.stat}>
-      <div style={{ fontSize: 12.5, color: 'var(--ink-muted)' }}>{label}</div>
-      <div style={{ fontSize: 22, fontWeight: 700, color: 'var(--forest)' }}>{value}</div>
-      {sub && <div style={{ fontSize: 12, color: 'var(--ink-muted)' }}>{sub}</div>}
-    </div>
-  );
-}
+// Shown while a location is being studied. The steps are the real work the
+// server is doing, so the user can see progress instead of a frozen button.
+const ANALYZE_STEPS = [
+  'Finding the address of your pin…',
+  'Reading every shop and landmark on the map…',
+  'Counting the people who live inside your circle…',
+  'Checking last 12 months of weather…',
+  'Scoring 15 businesses against the data…',
+  'Writing your advice in simple words…',
+];
 
-function Bar({ label, value, color }) {
-  return (
-    <div style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 13 }}>
-      <span style={{ width: 150, color: 'var(--ink-muted)' }}>{label}</span>
-      <div style={{ flex: 1, height: 10, background: 'var(--border)', borderRadius: 5 }}>
-        <div style={{ width: `${Math.round(value * 100)}%`, height: '100%', background: color, borderRadius: 5 }} />
-      </div>
-      <span style={{ width: 40, textAlign: 'right' }}>{value.toFixed(2)}</span>
-    </div>
-  );
-}
+function AnalyzingPanel({ radius }) {
+  const [step, setStep] = useState(0);
+  const [seconds, setSeconds] = useState(0);
 
-const RISK_COLORS = { low: '#2e7d32', medium: '#b7791f', high: '#c0392b', unknown: '#7a6f63' };
+  useEffect(() => {
+    const tick = setInterval(() => setSeconds((v) => v + 1), 1000);
+    const next = setInterval(() => setStep((v) => Math.min(v + 1, ANALYZE_STEPS.length - 1)), 3500);
+    return () => {
+      clearInterval(tick);
+      clearInterval(next);
+    };
+  }, []);
 
-function BusinessCard({ rank, r, name, selected, onClick }) {
-  const b = r.breakdown;
   return (
-    <div onClick={onClick} style={{ ...s.biz, ...(selected ? s.bizSelected : {}) }}>
-      <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
-        <div style={s.rank}>{rank}</div>
-        <div style={{ flex: 1 }}>
-          <div style={{ fontWeight: 700, fontSize: 16 }}>{name}</div>
-          <div style={{ fontSize: 13, color: 'var(--ink-muted)' }}>
-            {r.competitorCount} existing shop{r.competitorCount === 1 ? '' : 's'} nearby ({r.competitorSource === 'google' ? 'Google' : 'OpenStreetMap'}) · setup{' '}
-            {rupees(r.setupCost[0])}–{rupees(r.setupCost[1])}
-          </div>
-        </div>
-        <div style={{ textAlign: 'right' }}>
-          <div style={{ fontSize: 26, fontWeight: 800, color: 'var(--forest)' }}>{r.score}</div>
-          <div style={{ fontSize: 11.5, color: RISK_COLORS[r.risk.level] }}>
-            {r.risk.level === 'unknown' ? 'risk: n/a' : `${r.risk.level} risk`}
-          </div>
-        </div>
+    <div style={s.loadingBox} role="status" aria-live="polite">
+      <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 10 }}>
+        <span className="spinner" />
+        <span style={{ fontWeight: 700, color: 'var(--forest)' }}>
+          Studying {(radius / 1000).toFixed(1)} km around your pin
+        </span>
+        <span style={{ marginLeft: 'auto', fontSize: 12.5, color: 'var(--ink-muted)' }}>{seconds}s</span>
       </div>
 
-      {selected && (
-        <div style={{ marginTop: 12, display: 'grid', gap: 6 }}>
-          <Bar label="Demand" value={b.demand} color="var(--forest)" />
-          <Bar label="  · population" value={b.population} color="var(--leaf)" />
-          <Bar label="  · nearby anchors" value={b.anchors} color="var(--leaf)" />
-          <Bar label="  · accessibility" value={b.access} color="var(--leaf)" />
-          <Bar label="Low competition" value={b.competition} color="var(--tan)" />
-          {b.environment < 1 && <Bar label="Climate fit" value={b.environment} color="var(--brown)" />}
-          <div style={{ fontSize: 12.5, color: 'var(--ink-muted)', marginTop: 4 }}>
-            Score = 100 × {b.demand} × {b.competition}
-            {b.environment < 1 ? ` × ${b.environment}` : ''} = {r.score}
-            {b.anchorParts.length > 0 && <> · Customers come from: {b.anchorParts.map((p) => `${p.count} ${p.label.toLowerCase()}`).join(', ')}</>}
-            {r.risk.level === 'high' && <> · ⚠ {Math.round(r.risk.share * 100)}% of anchor demand depends on {r.risk.source.toLowerCase()}</>}
-            {b.environmentReason && <> · {b.environmentReason}</>}
-            {b.populationMissing && <> · population unavailable, neutral value used</>}
-            {r.note && <> · Note: {r.note}</>}
-          </div>
-        </div>
-      )}
+      <div className="progress-track">
+        <div className="progress-fill" />
+      </div>
+
+      <ul style={{ listStyle: 'none', margin: '12px 0 0', padding: 0 }}>
+        {ANALYZE_STEPS.map((label, i) => (
+          <li
+            key={label}
+            style={{
+              fontSize: 13,
+              padding: '3px 0',
+              color: i < step ? 'var(--forest)' : i === step ? 'var(--ink)' : 'var(--ink-muted)',
+              opacity: i > step ? 0.5 : 1,
+            }}
+          >
+            {i < step ? '✓' : i === step ? '→' : '•'} {label}
+          </li>
+        ))}
+      </ul>
+
+      <div style={{ fontSize: 12, color: 'var(--ink-muted)', marginTop: 8 }}>
+        A bigger circle takes longer. The same spot loads instantly next time.
+      </div>
     </div>
   );
 }
-
-function CompareTable({ a, b, displayName }) {
-  const rows = a.ranked
-    .filter((r) => r.eligible)
-    .slice(0, 8)
-    .map((ra) => ({ ra, rb: b.ranked.find((x) => x.id === ra.id) }));
-  const best = rows[0];
-  const diff = best && best.rb ? best.rb.score - best.ra.score : 0;
-  // "% higher" is measured against the LOWER of the two scores.
-  const low = best && best.rb ? Math.min(best.ra.score, best.rb.score) : 0;
-  const pct = low > 0 ? Math.round((Math.abs(diff) / low) * 100) : null;
-
-  return (
-    <>
-      {best && best.rb && (
-        <p style={{ fontSize: 15.5, marginTop: 0 }}>
-          For <b>{displayName(best.ra)}</b>: location <b>{diff > 0 ? 'B' : 'A'}</b> scores{' '}
-          <b>{diff === 0 ? 'the same' : pct != null ? `${pct}% higher` : 'higher'}</b> ({best.ra.score} vs {best.rb.score}).
-          {diff > 0 && best.ra.breakdown.demand > best.rb.breakdown.demand && ' A has more demand, but B has far less competition.'}
-        </p>
-      )}
-      <table style={s.table}>
-        <thead>
-          <tr>
-            <th style={s.th}>Business</th>
-            <th style={s.th}>A</th>
-            <th style={s.th}>B</th>
-            <th style={s.th}>Shops A / B</th>
-            <th style={s.th}>Better</th>
-          </tr>
-        </thead>
-        <tbody>
-          {rows.map(({ ra, rb }) => (
-            <tr key={ra.id}>
-              <td style={s.td}>{displayName(ra)}</td>
-              <td style={s.td}>{ra.score}</td>
-              <td style={s.td}>{rb ? rb.score : '–'}</td>
-              <td style={s.td}>
-                {ra.competitorCount} / {rb ? rb.competitorCount : '–'}
-              </td>
-              <td style={{ ...s.td, fontWeight: 700 }}>{!rb ? '–' : rb.score > ra.score ? 'B' : rb.score < ra.score ? 'A' : '='}</td>
-            </tr>
-          ))}
-        </tbody>
-      </table>
-    </>
-  );
-}
-
-const s = {
-  title: { fontFamily: 'var(--font-display)', fontSize: 28, color: 'var(--brown)', margin: '0 0 6px' },
-  subtitle: { color: 'var(--ink-muted)', margin: '0 0 20px' },
-  card: {
-    background: 'var(--card)',
-    border: '1px solid var(--border)',
-    borderRadius: 'var(--radius-md)',
-    padding: 20,
-    marginBottom: 16,
-  },
-  stepLabel: { fontWeight: 700, color: 'var(--forest)', marginBottom: 12, fontSize: 15 },
-  row: { display: 'flex', gap: 8, flexWrap: 'wrap', alignItems: 'center' },
-  input: {
-    flex: 1,
-    minWidth: 180,
-    border: '1px solid var(--tan)',
-    borderRadius: 10,
-    padding: '10px 14px',
-    fontSize: 15,
-    background: 'var(--white)',
-    color: 'var(--ink)',
-  },
-  btnPrimary: {
-    background: 'var(--forest)',
-    color: 'var(--white)',
-    border: 'none',
-    borderRadius: 10,
-    padding: '10px 18px',
-    fontWeight: 600,
-    fontSize: 14.5,
-  },
-  btnSecondary: {
-    background: 'var(--white)',
-    color: 'var(--forest)',
-    border: '1px solid var(--forest)',
-    borderRadius: 10,
-    padding: '9px 14px',
-    fontWeight: 600,
-    fontSize: 14,
-  },
-  btnBig: {
-    marginTop: 18,
-    width: '100%',
-    background: 'var(--forest)',
-    color: 'var(--white)',
-    border: 'none',
-    borderRadius: 12,
-    padding: '14px 18px',
-    fontWeight: 700,
-    fontSize: 16,
-  },
-  results: { marginTop: 8, border: '1px solid var(--border)', borderRadius: 10, overflow: 'hidden' },
-  resultItem: {
-    display: 'block',
-    width: '100%',
-    textAlign: 'left',
-    background: 'var(--white)',
-    border: 'none',
-    borderBottom: '1px solid var(--border)',
-    padding: '9px 12px',
-    fontSize: 13.5,
-    color: 'var(--ink)',
-  },
-  pickRow: { display: 'flex', gap: 8, alignItems: 'center', margin: '14px 0 10px', flexWrap: 'wrap' },
-  chip: {
-    background: 'var(--white)',
-    border: '1px solid var(--border)',
-    borderRadius: 20,
-    padding: '6px 14px',
-    fontSize: 13.5,
-    color: 'var(--ink)',
-  },
-  chipOn: { background: 'var(--forest)', color: 'var(--white)', borderColor: 'var(--forest)' },
-  pinText: { fontSize: 13, color: 'var(--ink-muted)', marginTop: 8 },
-  grid2: { display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(260px, 1fr))', gap: 16 },
-  field: { display: 'flex', flexDirection: 'column', gap: 6 },
-  fieldLabel: { fontSize: 13.5, color: 'var(--ink-muted)', fontWeight: 600 },
-  error: {
-    background: '#fdecea',
-    color: 'var(--danger)',
-    border: '1px solid #f5c6c0',
-    borderRadius: 10,
-    padding: '10px 14px',
-    marginBottom: 16,
-  },
-  statGrid: { display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(190px, 1fr))', gap: 12 },
-  stat: { background: 'var(--white)', border: '1px solid var(--border)', borderRadius: 10, padding: 12 },
-  tag: { background: 'var(--leaf-pale)', color: 'var(--forest-dark)', borderRadius: 14, padding: '4px 10px', fontSize: 13 },
-  warnings: { color: '#8a5a00', fontSize: 13, margin: '12px 0 0', paddingLeft: 18 },
-  biz: {
-    background: 'var(--white)',
-    border: '1px solid var(--border)',
-    borderRadius: 12,
-    padding: 14,
-    marginBottom: 10,
-    cursor: 'pointer',
-  },
-  bizSelected: { borderColor: 'var(--forest)', boxShadow: '0 0 0 2px var(--leaf)' },
-  rank: {
-    width: 34,
-    height: 34,
-    borderRadius: 17,
-    background: 'var(--forest)',
-    color: 'var(--white)',
-    display: 'flex',
-    alignItems: 'center',
-    justifyContent: 'center',
-    fontWeight: 700,
-    flexShrink: 0,
-  },
-  table: { width: '100%', borderCollapse: 'collapse', fontSize: 14 },
-  th: { textAlign: 'left', borderBottom: '2px solid var(--border)', padding: '8px 6px', color: 'var(--ink-muted)' },
-  td: { borderBottom: '1px solid var(--border)', padding: '8px 6px' },
-};
