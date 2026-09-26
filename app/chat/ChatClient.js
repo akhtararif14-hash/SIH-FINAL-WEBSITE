@@ -3,6 +3,7 @@
 import { useState, useRef, useEffect } from 'react';
 import { useSearchParams } from 'next/navigation';
 import { useTranslate } from '@/lib/LanguageProvider';
+import RichText from '@/components/RichText';
 
 export default function ChatClient() {
   const { t } = useTranslate();
@@ -131,7 +132,7 @@ export default function ChatClient() {
         {messages.map((m) => (
           <div key={m.id} style={{ ...styles.bubbleRow, justifyContent: m.sender === 'user' ? 'flex-end' : 'flex-start' }}>
             <div style={{ ...styles.bubble, ...(m.sender === 'user' ? styles.userBubble : styles.botBubble) }}>
-              {m.text}
+              {m.sender === 'user' ? m.text : <RichText text={m.text} />}
             </div>
           </div>
         ))}
@@ -182,14 +183,25 @@ const styles = {
   },
   bubbleRow: { display: 'flex' },
   bubble: {
-    maxWidth: '78%',
-    padding: '10px 14px',
+    padding: '11px 15px',
     borderRadius: 14,
     fontSize: 14.5,
     lineHeight: 1.5,
+    overflowWrap: 'anywhere',
   },
-  userBubble: { background: 'var(--forest)', color: 'var(--white)' },
-  botBubble: { background: 'var(--tan)', color: 'var(--white)' },
+  userBubble: {
+    maxWidth: '78%',
+    background: 'var(--forest)',
+    color: 'var(--white)',
+  },
+  // Wider and light, because answers are structured and need to stay readable.
+  botBubble: {
+    maxWidth: '94%',
+    background: 'var(--card)',
+    color: 'var(--ink)',
+    border: '1px solid var(--border)',
+    borderLeft: '4px solid var(--leaf)',
+  },
   loadingText: { color: 'var(--ink-muted)', fontSize: 13.5, fontStyle: 'italic' },
   inputRow: {
     display: 'flex',

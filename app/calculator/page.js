@@ -45,7 +45,7 @@ export default function CalculatorPage() {
           <div style={styles.resultLine}>
             Repayment Period: {result.years} years (incl. {result.moratoriumMonths}-month moratorium)
           </div>
-          <div style={styles.eqiLine}>Estimated Monthly EQI: {formatINRDecimal(result.eqi)}</div>
+          <div style={styles.eqiLine}>Estimated EQI: {formatINRDecimal(result.eqi)}</div>
         </div>
       )}
     </div>
