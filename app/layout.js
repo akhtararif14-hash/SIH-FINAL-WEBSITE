@@ -2,7 +2,8 @@ import { Lora, Inter } from 'next/font/google';
 import './globals.css';
 import { LanguageProvider } from '@/lib/LanguageProvider';
 import { AuthProvider } from '@/lib/AuthProvider';
-import Header from '@/components/Header';
+import { ProfileProvider } from '@/lib/ProfileProvider';
+import AppShell from '@/components/AppShell';
 
 const lora = Lora({ subsets: ['latin'], variable: '--font-lora', weight: ['500', '600', '700'] });
 const inter = Inter({ subsets: ['latin'], variable: '--font-inter', weight: ['400', '500', '600', '700'] });
@@ -15,7 +16,7 @@ export const metadata = {
 
 export default function RootLayout({ children }) {
   return (
-        <html lang="en" className={`${lora.variable} ${inter.variable}`}>
+    <html lang="en" className={`${lora.variable} ${inter.variable}`}>
       <head>
         {/* Open the network connection to the map servers early, so map tiles
             start downloading the moment the map code is ready. */}
@@ -27,8 +28,9 @@ export default function RootLayout({ children }) {
       <body>
         <AuthProvider>
           <LanguageProvider>
-            <Header />
-            <main>{children}</main>
+            <ProfileProvider>
+              <AppShell>{children}</AppShell>
+            </ProfileProvider>
           </LanguageProvider>
         </AuthProvider>
       </body>

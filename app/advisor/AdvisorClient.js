@@ -10,6 +10,8 @@ import { useState, useEffect } from 'react';
 import dynamic from 'next/dynamic';
 import { useTranslate } from '@/lib/LanguageProvider';
 import { getParamInfo } from '@/lib/advisor/paramInfo';
+import { useProfile } from '@/lib/ProfileProvider';
+import { saveFile, buildLocationReportHtml } from '@/lib/userFiles';
 
 // Use Google Maps when a browser key exists, otherwise the free OpenStreetMap one.
 const USE_GOOGLE = Boolean(process.env.NEXT_PUBLIC_GOOGLE_MAPS_BROWSER_KEY);
@@ -55,6 +57,8 @@ async function readJSON(res) {
 
 export default function AdvisorClient() {
   const { t, lang } = useTranslate();
+  const { profile } = useProfile();
+  const [saved, setSaved] = useState(false);
 
   // --- input state ---
   const [pinA, setPinA] = useState(null);
@@ -149,6 +153,7 @@ export default function AdvisorClient() {
       if (which === 'B') setReportB(data);
       else {
         setReport(data);
+        setSaved(false);
         setSelectedId(data.ranked.find((r) => r.eligible)?.id || null);
       }
     } catch (err) {
@@ -389,6 +394,31 @@ export default function AdvisorClient() {
               </>
             ) : (
               <CompareTable a={report} b={reportB} displayName={displayName} />
+            )}
+          </section>
+
+          <section style={s.card}>
+            <div style={s.stepLabel}>Keep this report</div>
+            <p style={{ margin: '0 0 12px', color: 'var(--ink-muted)', fontSize: 14 }}>
+              Save it to your Downloads page — it opens later even without internet, and can be printed as a PDF.
+            </p>
+            <button
+              style={s.btnPrimary}
+              onClick={() => {
+                saveFile({
+                  title: `Business report — ${report.location.area || report.location.label.split(',')[0]}`,
+                  subtitle: `${(report.radius / 1000).toFixed(1)} km circle · top idea: ${eligible[0]?.name || '—'}`,
+                  html: buildLocationReportHtml(report, profile),
+                });
+                setSaved(true);
+              }}
+            >
+              {saved ? '✓ Saved to Downloads' : 'Save this report'}
+            </button>
+            {saved && (
+              <a href="/downloads" style={{ ...s.btnSecondary, marginLeft: 10, display: 'inline-block' }}>
+                Open Downloads →
+              </a>
             )}
           </section>
 
