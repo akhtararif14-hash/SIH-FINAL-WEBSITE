@@ -11,7 +11,35 @@ const inter = Inter({ subsets: ['latin'], variable: '--font-inter', weight: ['40
 export const metadata = {
   title: 'SriGen — AI Business Advisor',
   description: 'Multilingual AI business advisory and financial scheme guidance for micro-entrepreneurs.',
-  icons: { icon: '/favicon.png' },
+  applicationName: 'SriGen',
+  manifest: '/manifest.json',
+  // Browser tab, phone home screen, and the picture shown when someone
+  // shares the link. All generated from the one logo file.
+  icons: {
+    icon: [
+      { url: '/favicon.ico', sizes: 'any' },
+      { url: '/icon-192.png', type: 'image/png', sizes: '192x192' },
+      { url: '/icon-512.png', type: 'image/png', sizes: '512x512' },
+    ],
+    apple: [{ url: '/apple-icon.png', sizes: '180x180' }],
+  },
+  openGraph: {
+    title: 'SriGen — AI Business Advisor',
+    description: 'Multilingual AI business advisory and financial scheme guidance for micro-entrepreneurs.',
+    siteName: 'SriGen',
+    images: [{ url: '/og-image.png', width: 1200, height: 630 }],
+    type: 'website',
+  },
+  twitter: {
+    card: 'summary_large_image',
+    title: 'SriGen — AI Business Advisor',
+    description: 'Multilingual AI business advisory and financial scheme guidance for micro-entrepreneurs.',
+    images: ['/og-image.png'],
+  },
+};
+
+export const viewport = {
+  themeColor: '#2e5339',
 };
 
 export default function RootLayout({ children }) {
