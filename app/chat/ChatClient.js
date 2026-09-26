@@ -125,10 +125,11 @@ export default function ChatClient() {
   };
 
   return (
-    <div className="page chat-wrap" style={{ maxWidth: 680, display: 'flex', flexDirection: 'column' }}>
+    // Width comes from .chat-wrap in globals.css so it can differ per screen size.
+    <div className="page chat-wrap" style={{ display: 'flex', flexDirection: 'column' }}>
       <h1 style={styles.title}>{t('aiAdvisor')}</h1>
 
-      <div style={styles.messages}>
+      <div className="chat-messages" style={styles.messages}>
         {messages.map((m) => (
           <div key={m.id} style={{ ...styles.bubbleRow, justifyContent: m.sender === 'user' ? 'flex-end' : 'flex-start' }}>
             <div style={{ ...styles.bubble, ...(m.sender === 'user' ? styles.userBubble : styles.botBubble) }}>
@@ -172,7 +173,7 @@ export default function ChatClient() {
 }
 
 const styles = {
-  title: { fontFamily: 'var(--font-display)', fontSize: 26, color: 'var(--brown)', margin: '0 0 16px' },
+  title: { fontFamily: 'var(--font-display)', fontSize: 26, color: 'var(--brown)', margin: '0 0 12px' },
   messages: {
     flex: 1,
     overflowY: 'auto',
@@ -180,6 +181,8 @@ const styles = {
     flexDirection: 'column',
     gap: 10,
     paddingBottom: 16,
+    paddingRight: 4,
+    scrollBehavior: 'smooth',
   },
   bubbleRow: { display: 'flex' },
   bubble: {

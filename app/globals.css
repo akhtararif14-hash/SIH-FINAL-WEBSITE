@@ -371,9 +371,37 @@ button {
 }
 
 /* Chat fills the screen minus the app frame, on every device */
-.chat-wrap { height: calc(100dvh - 120px); }
+/* ---------- AI Advisor chat page ----------
+   .page adds 32px top + 80px bottom padding and box-sizing is border-box,
+   so the old calc() lost ~232px and left a blank strip under the input.
+   The chat fills the viewport instead, and its own padding is trimmed. */
+.chat-wrap {
+  height: 100dvh;
+  max-width: 880px;
+  padding: 26px 20px 18px;
+  overflow: hidden;
+}
+
+/* The message list scrolls, but the scrollbar stays hidden.
+   min-height:0 lets a flex child actually shrink and scroll. */
+.chat-messages {
+  min-height: 0;
+  scrollbar-width: none;      /* Firefox */
+  -ms-overflow-style: none;   /* old Edge */
+}
+.chat-messages::-webkit-scrollbar {
+  width: 0;
+  height: 0;
+  display: none;              /* Chrome, Safari, new Edge */
+}
+
 @media (max-width: 860px) {
-  .chat-wrap { height: calc(100dvh - 190px); }
+  /* top bar is in the flow (~52px); the bottom nav is fixed,
+     and .shell-content already reserves 72px for it. */
+  .chat-wrap {
+    height: calc(100dvh - 52px - 72px);
+    padding: 14px 14px 10px;
+  }
 }
 
 /* Login / Sign up choice cards on the welcome screen */
