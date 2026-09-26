@@ -22,6 +22,7 @@ import {
   placesReviewsEnabled,
 } from '@/lib/advisor/sources';
 import { rankBusinesses } from '@/lib/advisor/scoring';
+import { advisorT } from '@/lib/advisor/i18n';
 import { explainReport } from '@/lib/advisor/explain';
 import { CATEGORIES } from '@/lib/advisor/businesses';
 
@@ -48,6 +49,7 @@ export async function POST(request) {
     const budget = Number(body.budget) > 0 ? Number(body.budget) : null;
     const interests = Array.isArray(body.interests) ? body.interests.filter((c) => CATEGORIES.includes(c)) : [];
     const lang = ['en', 'hi', 'ur', 'bn'].includes(body.lang) ? body.lang : 'en';
+    const A = advisorT(lang);
 
     const warnings = [];
 
@@ -61,13 +63,15 @@ export async function POST(request) {
 
     if (!osm) {
       return Response.json(
-        { error: 'Could not load map data for this spot. Please try again in a minute.', warnings },
+        { error: A('errMapData'), warnings },
         { status: 502 }
       );
     }
 
     // Score against the radius actually studied, so the numbers stay honest.
-    const data = { osm, population, climate, radius: osm.usedRadius || radius, budget, anchors: osm.anchors, access: osm.access, placesCompetitors: null };
+    // lang travels with the data so scoring, SWOT and business names all
+    // come back in the user's language.
+    const data = { osm, population, climate, radius: osm.usedRadius || radius, budget, anchors: osm.anchors, access: osm.access, placesCompetitors: null, lang };
     let ranked = rankBusinesses(data, { budget, interests });
 
     // Step 2 (optional): if a Google key exists, fetch real ratings for the

@@ -10,8 +10,10 @@ import { useState, useEffect } from 'react';
 import dynamic from 'next/dynamic';
 import { useTranslate } from '@/lib/LanguageProvider';
 import { getParamInfo } from '@/lib/advisor/paramInfo';
+import { advisorT } from '@/lib/advisor/i18n';
 import { useProfile } from '@/lib/ProfileProvider';
 import { saveFile, buildLocationReportHtml } from '@/lib/userFiles';
+import Icon from '@/components/Icon';
 
 // Use Google Maps when a browser key exists, otherwise the free OpenStreetMap one.
 const USE_GOOGLE = Boolean(process.env.NEXT_PUBLIC_GOOGLE_MAPS_BROWSER_KEY);
@@ -48,7 +50,7 @@ async function readJSON(res) {
     return JSON.parse(text);
   } catch {
     if (res.status === 504 || /timed? ?out|FUNCTION_INVOCATION_TIMEOUT/i.test(text)) {
-      throw new Error('The study took too long and the server stopped it. Try a smaller radius (5 km), then run it again — the second try is much faster.');
+      throw new Error(A('errTimeout'));
     }
     if (res.status === 404) throw new Error(`API not found (404) at ${res.url} — check the route.js file location.`);
     throw new Error(`Server error (${res.status}). Try again in a minute, or use a smaller radius.`);
@@ -57,6 +59,7 @@ async function readJSON(res) {
 
 export default function AdvisorClient() {
   const { t, lang } = useTranslate();
+  const A = advisorT(lang);
   const { profile } = useProfile();
   const [saved, setSaved] = useState(false);
 
@@ -97,7 +100,7 @@ export default function AdvisorClient() {
 
   const search = async (e) => {
     e.preventDefault();
-    if (query.trim().length < 3) return setError('Type at least 3 letters of a place name.');
+    if (query.trim().length < 3) return setError(A('errShort3'));
     setLoading('search');
     setError('');
     try {
@@ -109,29 +112,29 @@ export default function AdvisorClient() {
       const data = await readJSON(res);
       if (!res.ok) throw new Error(data.error);
       setSearchResults(data.results);
-      if (!data.results.length) setError('No place found. Try adding the city name, e.g. "Lajpat Nagar, Delhi".');
+      if (!data.results.length) setError(A('errNoPlace'));
     } catch (err) {
-      setError(err.message || 'Search failed');
+      setError(err.message || A('errSearchFailed'));
     } finally {
       setLoading(null);
     }
   };
 
   const useMyLocation = () => {
-    if (!navigator.geolocation) return setError('Your browser does not support location.');
+    if (!navigator.geolocation) return setError(A('errNoGeo'));
     navigator.geolocation.getCurrentPosition(
       (pos) => {
-        setPin(pos.coords.latitude, pos.coords.longitude, 'My location');
+        setPin(pos.coords.latitude, pos.coords.longitude, A('myLocation'));
         setFocus({ lat: pos.coords.latitude, lng: pos.coords.longitude });
       },
-      () => setError('Location permission was denied. Search or tap on the map instead.'),
+      () => setError(A('errGeoDenied')),
       { enableHighAccuracy: true, timeout: 10000 }
     );
   };
 
   const analyze = async (which) => {
     const pin = which === 'B' ? pinB : pinA;
-    if (!pin) return setError(which === 'B' ? 'Drop pin B on the map first.' : 'Choose a location first.');
+    if (!pin) return setError(which === 'B' ? A('errPinBFirst') : A('errChooseFirst'));
     setLoading(which);
     setError('');
     try {
@@ -149,7 +152,7 @@ export default function AdvisorClient() {
         }),
       });
       const data = await readJSON(res);
-      if (!res.ok) throw new Error(data.error || 'Analysis failed');
+      if (!res.ok) throw new Error(data.error || A('errAnalysisFailed'));
       if (which === 'B') setReportB(data);
       else {
         setReport(data);
@@ -184,13 +187,17 @@ export default function AdvisorClient() {
             style={s.input}
             value={query}
             onChange={(e) => setQuery(e.target.value)}
-            placeholder="Search a place, e.g. Batla House, Delhi"
+            placeholder={A('searchPlaceholder')}
           />
           <button type="submit" style={s.btnPrimary} disabled={loading === 'search'}>
             {loading === 'search' ? 'Searching…' : 'Search'}
           </button>
-          <button type="button" style={s.btnSecondary} onClick={useMyLocation}>
-             My location
+          <button
+            type="button"
+            style={{ ...s.btnSecondary, display: 'inline-flex', alignItems: 'center', gap: 7 }}
+            onClick={useMyLocation}
+          >
+            <Icon name="pin" size={17} /> {A('myLocation')}
           </button>
         </form>
 
@@ -252,7 +259,7 @@ export default function AdvisorClient() {
             <span style={s.fieldLabel}>Area to study: {(radius / 1000).toFixed(1)} km around the pin</span>
             <input type="range" min={5000} max={10000} step={500} value={radius} onChange={(e) => setRadius(Number(e.target.value))} />
             <span style={{ fontSize: 12, color: 'var(--ink-muted)' }}>
-              5 km = your immediate market · 10 km = the wider town. A bigger circle takes longer to study.
+              {A('radiusHint')}
             </span>
           </label>
           <label style={s.field}>
@@ -264,7 +271,7 @@ export default function AdvisorClient() {
               step={10000}
               value={budget}
               onChange={(e) => setBudget(e.target.value)}
-              placeholder="e.g. 300000"
+              placeholder={A('budgetPlaceholder')}
             />
           </label>
         </div>
@@ -278,7 +285,7 @@ export default function AdvisorClient() {
         </div>
 
         <button style={{ ...s.btnBig, opacity: pinA ? 1 : 0.5 }} onClick={() => analyze('A')} disabled={!!loading}>
-          {loading === 'A' ? 'Studying this area…' : 'Find the best business here →'}
+          {loading === 'A' ? A('studyingArea') : A('findBest')}
         </button>
         {loading === 'A' && <AnalyzingPanel radius={radius} />}
       </section>
@@ -289,25 +296,25 @@ export default function AdvisorClient() {
       {report && (
         <>
           <section style={s.card}>
-            <div style={s.stepLabel}>What we found around A</div>
+            <div style={s.stepLabel}>{A('whatWeFound', { label: 'A' })}</div>
             <div style={s.statGrid}>
               <Stat
-                label="People living in this circle"
+                label={A('peopleInCircle')}
                 value={report.population ? report.population.people.toLocaleString('en-IN') : 'n/a'}
-                sub={report.population ? `${report.population.density.toLocaleString('en-IN')} per km² (WorldPop ${report.population.year})` : 'population data unavailable'}
+                sub={report.population ? `${report.population.density.toLocaleString('en-IN')} per km² (WorldPop ${report.population.year})` : A('popUnavailable')}
               />
               <Stat
-                label="Average day temperature"
+                label={A('avgTemp')}
                 value={report.climate?.avgMaxTemp != null ? `${report.climate.avgMaxTemp} °C` : 'n/a'}
                 sub={report.climate ? `${report.climate.hotDays} days ≥ 40 °C last year` : ''}
               />
               <Stat
-                label="Rain last 12 months"
+                label={A('rainLast12')}
                 value={report.climate ? `${report.climate.annualRainMm} mm` : 'n/a'}
                 sub={report.climate ? `${report.climate.rainyDays} rainy days` : ''}
               />
               <Stat
-                label="Height above sea level"
+                label={A('heightAboveSea')}
                 value={report.climate?.elevationM != null ? `${Math.round(report.climate.elevationM)} m` : 'n/a'}
                 sub=""
               />
@@ -317,7 +324,7 @@ export default function AdvisorClient() {
                 .filter(([, n]) => n > 0)
                 .map(([k, n]) => (
                   <span key={k} style={s.tag}>
-                    {n} {ANCHOR_SHORT[k] || k}
+                    {n} {anchorShort(A)[k] || k}
                   </span>
                 ))}
             </div>
@@ -327,7 +334,7 @@ export default function AdvisorClient() {
                 {report.dataConfidence}
               </b>{' '}
               ({report.mappedShops} shop{report.mappedShops === 1 ? "" : "s"} mapped in this circle)
-              <InfoBlock label="data confidence" info={getParamInfo('confidence', eligible[0] || report.ranked[0], report)} />
+              <InfoBlock label={A('dataConfidence')} info={getParamInfo('confidence', eligible[0] || report.ranked[0], report)} />
             </div>
             {report.warnings?.length > 0 && (
               <ul style={s.warnings}>
@@ -346,8 +353,8 @@ export default function AdvisorClient() {
           )}
 
           <section style={s.card}>
-            <div style={s.stepLabel}>Best business ideas for A (tap one to see its competitors on the map)</div>
-            {eligible.length === 0 && <p>No business fits these filters. Try a bigger budget or fewer interests.</p>}
+            <div style={s.stepLabel}>{A('bestIdeasFor', { label: 'A' })}</div>
+            {eligible.length === 0 && <p>{A('noBusinessFits')}</p>}
             {eligible.slice(0, 8).map((r, i) => (
               <BusinessCard
                 key={r.id}
@@ -368,7 +375,7 @@ export default function AdvisorClient() {
                   <div key={r.id} style={{ fontSize: 13.5, padding: '4px 0', color: 'var(--ink-muted)' }}>
                     {displayName(r)} — score {r.score}
                     {r.overBudget ? ` · needs at least ${rupees(r.setupCost[0])}` : ''}
-                    {r.outOfInterest ? ' · not in chosen interests' : ''}
+                    {r.outOfInterest ? ` · ${A('notInInterests')}` : ''}
                   </div>
                 ))}
               </details>
@@ -377,18 +384,18 @@ export default function AdvisorClient() {
 
           {/* ---------------- COMPARE ---------------- */}
           <section style={s.card}>
-            <div style={s.stepLabel}>Compare with another location</div>
+            <div style={s.stepLabel}>{A('compareWith')}</div>
             {!pinB ? (
               <p style={{ margin: 0 }}>
-                Select <b>Pin B</b> above, then tap a second spot on the map (or search for it).
+                {A('selectWord')} <b>{A('pinB')}</b>
                 <button style={{ ...s.btnSecondary, marginLeft: 10 }} onClick={() => setPicking('B')}>
-                  Set pin B
+                  {A('setPinB')}
                 </button>
               </p>
             ) : !reportB ? (
               <>
                 <button style={s.btnPrimary} onClick={() => analyze('B')} disabled={!!loading}>
-                  {loading === 'B' ? 'Studying location B…' : 'Analyse location B'}
+                  {loading === 'B' ? A('studyingB') : A('analyseB')}
                 </button>
                 {loading === 'B' && <AnalyzingPanel radius={radius} />}
               </>
@@ -398,22 +405,24 @@ export default function AdvisorClient() {
           </section>
 
           <section style={s.card}>
-            <div style={s.stepLabel}>Keep this report</div>
+            <div style={s.stepLabel}>{A('keepReport')}</div>
             <p style={{ margin: '0 0 12px', color: 'var(--ink-muted)', fontSize: 14 }}>
-              Save it to your Downloads page — it opens later even without internet, and can be printed as a PDF.
+              {A('keepReportSub')}
             </p>
             <button
               style={s.btnPrimary}
               onClick={() => {
                 saveFile({
-                  title: `Business report — ${report.location.area || report.location.label.split(',')[0]}`,
-                  subtitle: `${(report.radius / 1000).toFixed(1)} km circle · top idea: ${eligible[0]?.name || '—'}`,
-                  html: buildLocationReportHtml(report, profile),
+                  title: A('repFileName', {
+                    place: report.location.area || report.location.label.split(',')[0],
+                  }),
+                  subtitle: `${(report.radius / 1000).toFixed(1)} km · ${eligible[0]?.name || '—'}`,
+                  html: buildLocationReportHtml(report, profile, lang),
                 });
                 setSaved(true);
               }}
             >
-              {saved ? '✓ Saved to Downloads' : 'Save this report'}
+              {saved ? A('savedToDownloads') : A('saveReport')}
             </button>
             {saved && (
               <a href="/downloads" style={{ ...s.btnSecondary, marginLeft: 10, display: 'inline-block' }}>
@@ -432,31 +441,36 @@ export default function AdvisorClient() {
   );
 }
 
-const ANCHOR_SHORT = {
-  college: 'colleges',
-  school: 'schools',
-  hospital: 'hospitals',
-  clinic: 'clinics',
-  station: 'stations',
-  busStop: 'bus stops',
-  office: 'offices',
-  market: 'markets/malls',
-  hotel: 'hotels/hostels',
-  worship: 'places of worship',
-};
+const ANCHOR_SHORT_KEYS = ['college','school','hospital','clinic','station','busStop','office','market','hotel','worship'];
+
+// Short names for the chips, e.g. "2 colleges · 1 hospital".
+function anchorShort(A) {
+  const out = {};
+  for (const k of ANCHOR_SHORT_KEYS) out[k] = A(`short_${k}`);
+  return out;
+}
 
 // Shown while a location is being studied. The steps are the real work the
 // server is doing, so the user can see progress instead of a frozen button.
 const ANALYZE_STEPS = [
-  'Finding the address of your pin…',
-  'Reading every shop and landmark on the map…',
-  'Counting the people who live inside your circle…',
-  'Checking last 12 months of weather…',
-  'Scoring 15 businesses against the data…',
-  'Writing your advice in simple words…',
+  A('step1'),
+  A('step2'),
+  A('step3'),
+  A('step4'),
+  A('step5'),
+  A('step6'),
 ];
 
+
+// Every sub-component below is a client component in this same file, so it
+// can read the chosen language directly instead of being passed it.
+function useA() {
+  const { lang } = useTranslate();
+  return advisorT(lang);
+}
+
 function AnalyzingPanel({ radius }) {
+  const A = useA();
   const [step, setStep] = useState(0);
   const [seconds, setSeconds] = useState(0);
 
@@ -500,7 +514,7 @@ function AnalyzingPanel({ radius }) {
       </ul>
 
       <div style={{ fontSize: 12, color: 'var(--ink-muted)', marginTop: 8 }}>
-        A bigger circle takes longer. The same spot loads instantly next time.
+        {A('biggerCircleNote')}
       </div>
     </div>
   );
@@ -578,13 +592,14 @@ function MetricRow({ label, value, color, infoKey, r, ctx, indent = false }) {
 }
 
 const SWOT_BOXES = [
-  { key: 'strengths', title: 'Strengths', sub: 'good here, now', bg: '#eaf3ec', border: '#7cb68c', color: '#1f3b28' },
-  { key: 'weaknesses', title: 'Weaknesses', sub: 'missing here', bg: '#fdecea', border: '#e6a9a2', color: '#7a2318' },
-  { key: 'opportunities', title: 'Opportunities', sub: 'gaps you can use', bg: '#f3eefb', border: '#b9a6de', color: '#3f2a63' },
-  { key: 'threats', title: 'Threats', sub: 'what could go wrong', bg: '#fdf3e2', border: '#e0bc7c', color: '#7a5312' },
+  { key: 'strengths', title: 'Strengths', sub: A('swotGood'), bg: '#eaf3ec', border: '#7cb68c', color: '#1f3b28' },
+  { key: 'weaknesses', title: 'Weaknesses', sub: A('swotMissing'), bg: '#fdecea', border: '#e6a9a2', color: '#7a2318' },
+  { key: 'opportunities', title: 'Opportunities', sub: A('swotGaps'), bg: '#f3eefb', border: '#b9a6de', color: '#3f2a63' },
+  { key: 'threats', title: 'Threats', sub: A('swotWrong'), bg: '#fdf3e2', border: '#e0bc7c', color: '#7a5312' },
 ];
 
 function SwotGrid({ swot }) {
+  const A = useA();
   if (!swot) return null;
   return (
     <div style={s.swotGrid}>
@@ -602,7 +617,7 @@ function SwotGrid({ swot }) {
                 ))}
               </ul>
             ) : (
-              <div style={{ fontSize: 12.5, opacity: 0.7, marginTop: 6, color: box.color }}>Nothing notable found.</div>
+              <div style={{ fontSize: 12.5, opacity: 0.7, marginTop: 6, color: box.color }}>{A('nothingNotable')}</div>
             )}
           </div>
         );
@@ -614,6 +629,7 @@ function SwotGrid({ swot }) {
 const VERDICT_COLORS = { good: '#2e7d32', warn: '#b7791f', bad: '#c0392b' };
 
 function FinancePanel({ r, ctx }) {
+  const A = useA();
   const f = r.finance;
   if (!f) return null;
   const money = (n) => (n == null ? '—' : rupees(n));
@@ -621,8 +637,8 @@ function FinancePanel({ r, ctx }) {
   return (
     <div style={{ marginTop: 14 }}>
       <div style={s.sectionTitle}>
-        Money needed to start
-        <InfoBlock label="total investment" info={getParamInfo('investment', r, ctx, f)} inline />
+        {A('moneyToStart')}
+        <InfoBlock label={A('totalInvestment')} info={getParamInfo('investment', r, ctx, f)} inline />
       </div>
       <table style={s.table}>
         <tbody>
@@ -636,15 +652,15 @@ function FinancePanel({ r, ctx }) {
             </tr>
           ))}
           <tr>
-            <td style={{ ...s.td, fontWeight: 700 }}>Total investment</td>
+            <td style={{ ...s.td, fontWeight: 700 }}>{A('totalInvestment')}</td>
             <td style={{ ...s.td, textAlign: 'right', fontWeight: 700, color: 'var(--forest)' }}>{money(f.totalInvestment)}</td>
           </tr>
         </tbody>
       </table>
 
       <div style={s.sectionTitle}>
-        Every month, if it runs as expected
-        <InfoBlock label="monthly sales" info={getParamInfo('revenue', r, ctx, f)} inline />
+        {A('everyMonth')}
+        <InfoBlock label={A('monthlySales')} info={getParamInfo('revenue', r, ctx, f)} inline />
       </div>
       <table style={s.table}>
         <tbody>
@@ -662,7 +678,7 @@ function FinancePanel({ r, ctx }) {
             <td style={{ ...s.td, textAlign: 'right' }}>{money(f.monthlyRevenue)}</td>
           </tr>
           <tr>
-            <td style={s.td}>Gross profit <span style={{ color: 'var(--ink-muted)', fontSize: 12 }}>({Math.round(f.margin * 100)}% margin)</span></td>
+            <td style={s.td}>{A('grossProfit')} <span style={{ color: 'var(--ink-muted)', fontSize: 12 }}>({Math.round(f.margin * 100)}% margin)</span></td>
             <td style={{ ...s.td, textAlign: 'right' }}>{money(f.grossProfit)}</td>
           </tr>
           <tr>
@@ -670,15 +686,15 @@ function FinancePanel({ r, ctx }) {
             <td style={{ ...s.td, textAlign: 'right' }}>− {money(f.monthlyRent)}</td>
           </tr>
           <tr>
-            <td style={s.td}>Staff salaries</td>
+            <td style={s.td}>{A('staffSalaries')}</td>
             <td style={{ ...s.td, textAlign: 'right' }}>− {money(f.staffCost)}</td>
           </tr>
           <tr>
-            <td style={s.td}>Electricity, water, internet</td>
+            <td style={s.td}>{A('utilities')}</td>
             <td style={{ ...s.td, textAlign: 'right' }}>− {money(f.utilities)}</td>
           </tr>
           <tr>
-            <td style={{ ...s.td, fontWeight: 700 }}>Profit left with the owner</td>
+            <td style={{ ...s.td, fontWeight: 700 }}>{A('netProfit')}</td>
             <td style={{ ...s.td, textAlign: 'right', fontWeight: 700, color: f.netProfit > 0 ? '#2e7d32' : '#c0392b' }}>
               {money(f.netProfit)}
             </td>
@@ -689,21 +705,21 @@ function FinancePanel({ r, ctx }) {
       <div style={s.moneyRow}>
         <div style={s.moneyCell}>
           <div style={s.moneyLabel}>
-            Payback time <InfoBlock label="payback time" info={getParamInfo('payback', r, ctx, f)} inline />
+            {A('paybackTime')} <InfoBlock label={A('paybackTime')} info={getParamInfo('payback', r, ctx, f)} inline />
           </div>
-          <div style={s.moneyValue}>{f.paybackMonths ? `${f.paybackMonths} months` : 'not reached'}</div>
+          <div style={s.moneyValue}>{f.paybackMonths ? `${f.paybackMonths} months` : A('notReached')}</div>
         </div>
         <div style={s.moneyCell}>
           <div style={s.moneyLabel}>
-            Break-even sales <InfoBlock label="break-even sales" info={getParamInfo('breakeven', r, ctx, f)} inline />
+            {A('breakEvenSales')} <InfoBlock label={A('breakEvenSales')} info={getParamInfo('breakeven', r, ctx, f)} inline />
           </div>
           <div style={s.moneyValue}>{money(f.breakEvenSales)}/month</div>
           <div style={{ fontSize: 11.5, color: 'var(--ink-muted)' }}>
-            about {f.breakEvenCustomersPerDay} {f.model === 'monthly' ? 'members' : 'customers a day'}
+            about {f.breakEvenCustomersPerDay} {f.model === 'monthly' ? 'members' : A('customersADay')}
           </div>
         </div>
         <div style={s.moneyCell}>
-          <div style={s.moneyLabel}>First-year profit</div>
+          <div style={s.moneyLabel}>{A('firstYearProfit')}</div>
           <div style={s.moneyValue}>{f.netProfit > 0 ? money(f.netProfit * 12) : '—'}</div>
           <div style={{ fontSize: 11.5, color: 'var(--ink-muted)' }}>if sales stay steady</div>
         </div>
@@ -726,7 +742,7 @@ function FinancePanel({ r, ctx }) {
           <li>Licence needed: {f.licenceName}</li>
         </ul>
         <div style={{ fontSize: 12.5, color: 'var(--ink-muted)', marginTop: 6 }}>
-          These are typical figures, not quotes. Confirm rent, stock and licence costs locally before investing.
+          {A('financeNote')}
         </div>
       </details>
     </div>
@@ -735,6 +751,7 @@ function FinancePanel({ r, ctx }) {
 
 // Real Google reviews of the competing shops, when the Places key allows them.
 function ReviewNotes({ r, ctx }) {
+  const A = useA();
   const notes = (ctx?.reviewNotes || []).filter((n) => n.business === r.id);
   if (!notes.length) return null;
   return (
@@ -752,13 +769,14 @@ function ReviewNotes({ r, ctx }) {
         ))}
       </div>
       <div style={{ fontSize: 11.5, color: 'var(--ink-muted)', marginTop: 6 }}>
-        Reviews from Google. Read what people complain about, then do that one thing better.
+        {A('reviewsNote')}
       </div>
     </div>
   );
 }
 
 function BusinessCard({ rank, r, ctx, name, selected, onClick }) {
+  const A = useA();
   const b = r.breakdown;
   const f = r.finance;
   return (
@@ -784,16 +802,16 @@ function BusinessCard({ rank, r, ctx, name, selected, onClick }) {
       {selected && (
         <div style={{ marginTop: 12 }}>
           <div style={s.sectionTitle}>
-            How this score was built
-            <InfoBlock label="opportunity score" info={getParamInfo('score', r, ctx, f)} inline />
+            {A('howScoreBuilt')}
+            <InfoBlock label={A('opportunityScore')} info={getParamInfo('score', r, ctx, f)} inline />
           </div>
-          <MetricRow label="Demand" value={b.demand} color="var(--forest)" infoKey="demand" r={r} ctx={ctx} />
-          <MetricRow label="· population" value={b.population} color="var(--leaf)" infoKey="population" r={r} ctx={ctx} indent />
-          <MetricRow label="· nearby places" value={b.anchors} color="var(--leaf)" infoKey="anchors" r={r} ctx={ctx} indent />
-          <MetricRow label="· accessibility" value={b.access} color="var(--leaf)" infoKey="access" r={r} ctx={ctx} indent />
-          <MetricRow label="Low competition" value={b.competition} color="var(--tan)" infoKey="competition" r={r} ctx={ctx} />
+          <MetricRow label={A('demandLbl')} value={b.demand} color="var(--forest)" infoKey="demand" r={r} ctx={ctx} />
+          <MetricRow label={`· ${A('populationLbl')}`} value={b.population} color="var(--leaf)" infoKey="population" r={r} ctx={ctx} indent />
+          <MetricRow label={`· ${A('nearbyPlacesLbl')}`} value={b.anchors} color="var(--leaf)" infoKey="anchors" r={r} ctx={ctx} indent />
+          <MetricRow label={`· ${A('accessibilityLbl')}`} value={b.access} color="var(--leaf)" infoKey="access" r={r} ctx={ctx} indent />
+          <MetricRow label={A('lowCompetition')} value={b.competition} color="var(--tan)" infoKey="competition" r={r} ctx={ctx} />
           {b.environment < 1 && (
-            <MetricRow label="Weather fit" value={b.environment} color="var(--brown)" infoKey="environment" r={r} ctx={ctx} />
+            <MetricRow label={A('weatherFit')} value={b.environment} color="var(--brown)" infoKey="environment" r={r} ctx={ctx} />
           )}
 
           <div style={{ fontSize: 12.5, color: 'var(--ink-muted)', marginTop: 6 }}>
@@ -804,14 +822,14 @@ function BusinessCard({ rank, r, ctx, name, selected, onClick }) {
           </div>
 
           <div style={{ ...s.sectionTitle, marginTop: 16 }}>
-            Dependence risk
-            <InfoBlock label="dependence risk" info={getParamInfo('risk', r, ctx, f)} inline />
+            {A('dependenceRisk')}
+            <InfoBlock label={A('dependenceRisk')} info={getParamInfo('risk', r, ctx, f)} inline />
             <span style={{ color: RISK_COLORS[r.risk.level], fontWeight: 700, marginLeft: 6 }}>
               {r.risk.level}
             </span>
           </div>
 
-          <div style={{ ...s.sectionTitle, marginTop: 16 }}>SWOT analysis for this location</div>
+          <div style={{ ...s.sectionTitle, marginTop: 16 }}>{A('swotTitle')}</div>
           <SwotGrid swot={r.swot} />
 
           <ReviewNotes r={r} ctx={ctx} />
@@ -823,6 +841,7 @@ function BusinessCard({ rank, r, ctx, name, selected, onClick }) {
 }
 
 function CompareTable({ a, b, displayName }) {
+  const A = useA();
   const rows = a.ranked
     .filter((r) => r.eligible)
     .slice(0, 8)
@@ -838,18 +857,18 @@ function CompareTable({ a, b, displayName }) {
       {best && best.rb && (
         <p style={{ fontSize: 15.5, marginTop: 0 }}>
           For <b>{displayName(best.ra)}</b>: location <b>{diff > 0 ? 'B' : 'A'}</b> scores{' '}
-          <b>{diff === 0 ? 'the same' : pct != null ? `${pct}% higher` : 'higher'}</b> ({best.ra.score} vs {best.rb.score}).
-          {diff > 0 && best.ra.breakdown.demand > best.rb.breakdown.demand && ' A has more demand, but B has far less competition.'}
+          <b>{diff === 0 ? A('theSame') : pct != null ? `${pct}% higher` : 'higher'}</b> ({best.ra.score} vs {best.rb.score}).
+          {diff > 0 && best.ra.breakdown.demand > best.rb.breakdown.demand && ` ${A('aMoreDemandBLessComp')}`}
         </p>
       )}
       <table style={s.table}>
         <thead>
           <tr>
-            <th style={s.th}>Business</th>
+            <th style={s.th}>{A('businessCol')}</th>
             <th style={s.th}>A</th>
             <th style={s.th}>B</th>
             <th style={s.th}>Shops A / B</th>
-            <th style={s.th}>Better</th>
+            <th style={s.th}>{A('betterCol')}</th>
           </tr>
         </thead>
         <tbody>
