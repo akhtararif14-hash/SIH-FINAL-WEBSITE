@@ -32,9 +32,9 @@ import Image from 'next/image';
 // Anything left out keeps using the drawn icon below, so you can switch
 // them over one at a time. .png and .svg both work.
 const IMAGES = {
-  mic: '/icons/mic.svg',
-  pin: '/icons/pin.svg',
-  globe: '/icons/globe.svg',
+  // mic: '/icons/mic.svg',
+  // pin: '/icons/pin.svg',
+  // globe: '/icons/globe.svg',
   // home: '/icons/home.svg',
   // chat: '/icons/chat.svg',
   // doc: '/icons/doc.svg',
@@ -45,9 +45,9 @@ const IMAGES = {
 // White versions, used on the dark green sidebar.
 // Not needed at all if you use CHOICE B.
 const IMAGES_ON_DARK = {
-   mic: '/icons/mic-white.svg',
-   pin: '/icons/pin-white.svg',
-   globe: '/icons/globe-white.svg',
+   // mic: '/icons/mic-white.svg',
+   // pin: '/icons/pin-white.svg',
+   // globe: '/icons/globe-white.svg',
 };
 // ---------------------------------------------------------------------
 
