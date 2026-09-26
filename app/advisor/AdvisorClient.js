@@ -190,7 +190,7 @@ export default function AdvisorClient() {
             {loading === 'search' ? 'Searching…' : 'Search'}
           </button>
           <button type="button" style={s.btnSecondary} onClick={useMyLocation}>
-            📍 My location
+             My location
           </button>
         </form>
 
