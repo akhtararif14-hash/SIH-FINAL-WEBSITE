@@ -375,3 +375,31 @@ button {
 @media (max-width: 860px) {
   .chat-wrap { height: calc(100dvh - 190px); }
 }
+
+/* Login / Sign up choice cards on the welcome screen */
+.onb-choices { display: grid; gap: 12px; margin-bottom: 16px; }
+.onb-choice {
+  display: flex; align-items: center; gap: 14px; text-align: left;
+  background: var(--card); border: 1.5px solid var(--border); border-radius: 14px;
+  padding: 16px; color: var(--ink); width: 100%;
+}
+.onb-choice:disabled { opacity: 0.6; }
+.onb-choice strong { display: block; font-size: 16.5px; }
+.onb-choice small { display: block; font-size: 13px; color: var(--ink-muted); margin-top: 2px; }
+.onb-choice.primary { border-color: var(--forest); background: var(--leaf-pale); }
+.onb-choice-icon {
+  width: 42px; height: 42px; border-radius: 12px; background: var(--leaf-pale);
+  display: flex; align-items: center; justify-content: center; font-size: 20px; flex-shrink: 0;
+}
+.onb-choice.primary .onb-choice-icon { background: var(--forest); }
+.onb-choice-arrow { margin-left: auto; color: var(--forest); font-size: 19px; }
+.onb-inline-link {
+  display: block; margin-top: 8px; background: none; border: none;
+  color: var(--forest); font-weight: 700; font-size: 14px; padding: 0; text-decoration: underline;
+}
+.onb-lastline {
+  background: var(--leaf-pale); border-radius: 12px; padding: 12px 14px; margin-top: 18px;
+}
+.onb-lastline strong { display: block; font-size: 14.5px; color: var(--forest-dark); }
+.onb-lastline span { display: block; font-size: 13px; color: var(--ink-muted); margin-top: 3px; }
+.onb-google { margin-top: 12px; }
