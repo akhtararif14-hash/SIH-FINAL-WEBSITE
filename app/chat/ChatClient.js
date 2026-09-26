@@ -7,13 +7,11 @@ import RichText from '@/components/RichText';
 import Icon from '@/components/Icon';
 
 export default function ChatClient() {
-  const { t } = useTranslate();
+  const { t, lang } = useTranslate();
   const searchParams = useSearchParams();
   const presetQuestion = searchParams.get('q');
 
-  const [messages, setMessages] = useState([
-    { id: '0', sender: 'bot', text: 'Hi! Ask me about business schemes or financial planning — by typing or speaking.' },
-  ]);
+  const [messages, setMessages] = useState([]);
   const [input, setInput] = useState('');
   const [loading, setLoading] = useState(false);
   const [isRecording, setIsRecording] = useState(false);
@@ -29,6 +27,17 @@ export default function ChatClient() {
       setMicSupported(false);
     }
   }, []);
+
+  // The greeting follows the chosen language, including if it is changed
+  // part way through. Only the greeting is replaced; the conversation stays.
+  useEffect(() => {
+    setMessages((prev) => {
+      const greeting = { id: 'greeting', sender: 'bot', text: t('chatGreeting') };
+      if (prev.length === 0) return [greeting];
+      return prev.map((m) => (m.id === 'greeting' ? greeting : m));
+    });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [lang]);
 
   useEffect(() => {
     bottomRef.current?.scrollIntoView({ behavior: 'smooth' });
@@ -55,17 +64,17 @@ export default function ChatClient() {
       const response = await fetch('/api/chat', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ question: userMessage.text }),
+        body: JSON.stringify({ question: userMessage.text, lang }),
       });
       const data = await response.json();
       setMessages((prev) => [
         ...prev,
-        { id: (Date.now() + 1).toString(), sender: 'bot', text: data.answer || 'Something went wrong.' },
+        { id: (Date.now() + 1).toString(), sender: 'bot', text: data.answer || t('somethingWrong') },
       ]);
     } catch (err) {
       setMessages((prev) => [
         ...prev,
-        { id: (Date.now() + 1).toString(), sender: 'bot', text: `Error: ${err.message}` },
+        { id: (Date.now() + 1).toString(), sender: 'bot', text: `${t('errorPrefix')}: ${err.message}` },
       ]);
     } finally {
       setLoading(false);
@@ -89,7 +98,7 @@ export default function ChatClient() {
       mediaRecorderRef.current = mediaRecorder;
       setIsRecording(true);
     } catch (err) {
-      alert('Microphone permission is required to use voice input.');
+      alert(t('micPermission'));
     }
   };
 
@@ -112,14 +121,14 @@ export default function ChatClient() {
       } else {
         setMessages((prev) => [
           ...prev,
-          { id: Date.now().toString(), sender: 'bot', text: 'Could not understand the audio. Please try again.' },
+          { id: Date.now().toString(), sender: 'bot', text: t('voiceNotUnderstood') },
         ]);
         setLoading(false);
       }
     } catch (err) {
       setMessages((prev) => [
         ...prev,
-        { id: Date.now().toString(), sender: 'bot', text: `Voice error: ${err.message}` },
+        { id: Date.now().toString(), sender: 'bot', text: `${t('voiceErrorPrefix')}: ${err.message}` },
       ]);
       setLoading(false);
     }
@@ -138,7 +147,7 @@ export default function ChatClient() {
             </div>
           </div>
         ))}
-        {loading && <div style={styles.loadingText}>Thinking…</div>}
+        {loading && <div style={styles.loadingText}>{t('thinking')}</div>}
         <div ref={bottomRef} />
       </div>
 
@@ -160,7 +169,7 @@ export default function ChatClient() {
             type="button"
             style={{ ...styles.micButton, ...(isRecording ? styles.micButtonActive : {}) }}
             onClick={isRecording ? stopRecording : startRecording}
-            title="Voice input"
+            title={t('voiceInput')}
           >
             <Icon name={isRecording ? 'stop' : 'mic'} size={19} />
           </button>

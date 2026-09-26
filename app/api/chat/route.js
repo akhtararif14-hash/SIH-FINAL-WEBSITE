@@ -7,6 +7,16 @@ export const runtime = 'nodejs';
 import Groq from 'groq-sdk';
 import { GoogleGenAI } from '@google/genai';
 import knowledgeBase from '@/lib/knowledge-base.json';
+import { LANGUAGE_NAMES } from '@/lib/translations';
+
+// Shown when nothing in the knowledge base is close enough to the question.
+// Written out per language, because at this point no model has been called.
+const NO_MATCH = {
+  en: "I don't have information about that. Please ask something about business schemes or financial planning.",
+  hi: 'इसके बारे में मेरे पास जानकारी नहीं है। कृपया बिज़नेस योजनाओं या पैसों की योजना से जुड़ा सवाल पूछें।',
+  ur: 'اس بارے میں میرے پاس معلومات نہیں ہیں۔ براہ کرم کاروباری اسکیموں یا مالی منصوبہ بندی سے متعلق سوال پوچھیں۔',
+  bn: 'এ বিষয়ে আমার কাছে তথ্য নেই। অনুগ্রহ করে ব্যবসার স্কিম বা টাকার পরিকল্পনা সম্পর্কে প্রশ্ন করুন।',
+};
 
 const SIMILARITY_THRESHOLD = 0.5;
 const TOP_K = 3;
@@ -51,17 +61,25 @@ function retrieveTopChunks(queryEmbedding) {
   return scored.slice(0, TOP_K);
 }
 
-async function answerQuestion(question, { ai, groq }) {
+async function answerQuestion(question, lang, { ai, groq }) {
   const queryEmbedding = await embedQuery(question, ai);
   const topChunks = retrieveTopChunks(queryEmbedding);
   const goodMatches = topChunks.filter((c) => c.score >= SIMILARITY_THRESHOLD);
 
   if (goodMatches.length === 0) {
-    return "I don't have information about that. Please ask something related to business schemes or financial planning.";
+    return NO_MATCH[lang] || NO_MATCH.en;
   }
 
   const context = goodMatches.map((c) => c.text).join('\n\n');
+  const languageName = LANGUAGE_NAMES[lang] || 'English';
+
   const systemPrompt = `You are a financial and business advisory assistant for rural micro-entrepreneurs in India.
+
+WRITE THE WHOLE ANSWER IN ${languageName.toUpperCase()}. This matters more than anything else below.
+The context is written in English, but your answer must be in ${languageName}.
+Keep scheme names, and the abbreviations NSFDC, MFS, SCA and CA, in their usual form.
+Write rupee amounts with the Rupee sign, like Rs formatted as ₹1.25 lakh.
+
 Answer using ONLY the context below. If it doesn't fully answer the question, say what you can and note the gap.
 Never invent scheme details that aren't in the context.
 
@@ -92,12 +110,12 @@ ${context}`;
 
 export async function POST(request) {
   try {
-    const { question } = await request.json();
+    const { question, lang = 'en' } = await request.json();
     if (!question) {
       return Response.json({ error: 'Missing "question"' }, { status: 400 });
     }
     const clients = getClients();
-    const answer = await answerQuestion(question, clients);
+    const answer = await answerQuestion(question, lang, clients);
     return Response.json({ answer });
   } catch (err) {
     console.error('Error in /api/chat:', err.message);

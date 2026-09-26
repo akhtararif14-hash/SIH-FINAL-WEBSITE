@@ -1,18 +1,18 @@
 'use client';
 // app/schemes/page.js
-// Schemes are grouped by category. A category with no schemes yet still shows
-// its heading, with a short "coming soon" line in place of the cards.
+// Schemes are grouped by category, and every string on the page comes
+// from the translations or from the scheme's own text in that language.
 
 import { useRouter } from 'next/navigation';
 import { useTranslate } from '@/lib/LanguageProvider';
 import { SCHEME_CATEGORIES, schemesInCategory } from '@/lib/schemes';
 
 export default function SchemesPage() {
-  const { t } = useTranslate();
+  const { t, lang } = useTranslate();
   const router = useRouter();
 
   const askAI = (schemeName) => {
-    const q = `Tell me about ${schemeName} and if it fits my business.`;
+    const q = `${t('askAIAbout')} ${schemeName}`;
     router.push(`/chat?q=${encodeURIComponent(q)}`);
   };
 
@@ -21,20 +21,22 @@ export default function SchemesPage() {
       <h1 style={styles.title}>{t('bestSchemes')}</h1>
 
       {SCHEME_CATEGORIES.map((cat) => {
-        const list = schemesInCategory(cat.id);
+        const list = schemesInCategory(cat.id, lang);
 
         return (
           <section key={cat.id} style={styles.section}>
             <div style={styles.catHead}>
-              <h2 style={styles.catTitle}>{cat.label}</h2>
+              <h2 style={styles.catTitle}>{t(cat.labelKey)}</h2>
               <span style={styles.catCount}>
-                {list.length > 0 ? `${list.length} scheme${list.length > 1 ? 's' : ''}` : '—'}
+                {list.length > 0
+                  ? `${list.length} ${t(list.length === 1 ? 'schemeOne' : 'schemeMany')}`
+                  : '—'}
               </span>
             </div>
-            {cat.note && <p style={styles.catNote}>{cat.note}</p>}
+            <p style={styles.catNote}>{t(cat.noteKey)}</p>
 
             {list.length === 0 ? (
-              <div style={styles.empty}>More schemes will be added here soon.</div>
+              <div style={styles.empty}>{t('schemesEmpty')}</div>
             ) : (
               <div style={styles.list}>
                 {list.map((s) => (
@@ -50,8 +52,8 @@ export default function SchemesPage() {
                     {s.facts?.length > 0 && (
                       <dl style={styles.facts}>
                         {s.facts.map((f) => (
-                          <div key={f.label} style={styles.factRow}>
-                            <dt style={styles.factLabel}>{f.label}</dt>
+                          <div key={f.labelKey} style={styles.factRow}>
+                            <dt style={styles.factLabel}>{t(f.labelKey)}</dt>
                             <dd style={styles.factValue}>{f.value}</dd>
                           </div>
                         ))}
@@ -70,13 +72,15 @@ export default function SchemesPage() {
                           target="_blank"
                           rel="noopener noreferrer"
                         >
-                          Apply on {s.applyVia || 'the official portal'} ↗
+                          {t('applyOn')} {s.applyVia} ↗
                         </a>
                       )}
                     </div>
 
                     {s.helpline && (
-                      <div style={styles.helpline}>Helpline (toll free): {s.helpline}</div>
+                      <div style={styles.helpline}>
+                        {t('helplineLabel')}: {s.helpline}
+                      </div>
                     )}
                   </div>
                 ))}
@@ -86,10 +90,7 @@ export default function SchemesPage() {
         );
       })}
 
-      <p style={styles.footnote}>
-        Loan amounts, interest rates and repayment periods are as published by the scheme provider.
-        Always confirm the current terms with the bank or channel agency before applying.
-      </p>
+      <p style={styles.footnote}>{t('schemesFootnote')}</p>
     </div>
   );
 }
@@ -155,7 +156,7 @@ const styles = {
     flexWrap: 'wrap',
   },
   factLabel: {
-    flex: '0 0 170px',
+    flex: '0 0 190px',
     margin: 0,
     fontSize: 13,
     fontWeight: 700,
@@ -181,10 +182,5 @@ const styles = {
     borderBottom: '2px solid rgba(0,0,0,0.12)',
   },
   helpline: { marginTop: 12, fontSize: 12.5, color: 'var(--ink-muted)' },
-  footnote: {
-    fontSize: 12.5,
-    color: 'var(--ink-muted)',
-    lineHeight: 1.6,
-    marginTop: 8,
-  },
+  footnote: { fontSize: 12.5, color: 'var(--ink-muted)', lineHeight: 1.6, marginTop: 8 },
 };

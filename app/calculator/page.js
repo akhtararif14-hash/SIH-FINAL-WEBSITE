@@ -1,11 +1,16 @@
 'use client';
+// app/calculator/page.js
+// Every visible string comes from t(), so the page follows the language
+// the user picked. Scheme names come from lib/schemes.js, which is also
+// translated.
 
 import { useState } from 'react';
 import { useTranslate } from '@/lib/LanguageProvider';
 import { calculateLoan, formatINR, formatINRDecimal } from '@/lib/loanCalculator';
+import { schemeName } from '@/lib/schemes';
 
 export default function CalculatorPage() {
-  const { t } = useTranslate();
+  const { t, lang } = useTranslate();
   const [projectCost, setProjectCost] = useState('');
   const [result, setResult] = useState(null);
 
@@ -17,6 +22,7 @@ export default function CalculatorPage() {
   return (
     <div className="page" style={{ maxWidth: 560 }}>
       <h1 style={styles.title}>{t('calculator')}</h1>
+
       <form onSubmit={handleCalculate}>
         <label style={styles.label} htmlFor="cost">
           {t('projectCostLabel')}
@@ -28,26 +34,47 @@ export default function CalculatorPage() {
           style={styles.input}
           value={projectCost}
           onChange={(e) => setProjectCost(e.target.value)}
-          placeholder="e.g. 200000"
+          placeholder={t('costPlaceholder')}
         />
         <button type="submit" style={styles.button}>
           {t('calculate')}
         </button>
       </form>
 
-      {result && result.error && <p style={styles.error}>{result.error}</p>}
+      {result?.errorKey && <p style={styles.error}>{t(result.errorKey)}</p>}
 
-      {result && !result.error && (
+      {result && !result.errorKey && (
         <div style={styles.resultBox}>
-          <div style={styles.resultLine}>Scheme: {result.scheme}</div>
-          <div style={styles.resultLine}>Max Loan Amount: {formatINR(result.loanAmount)}</div>
-          <div style={styles.resultLine}>Interest Rate: {result.interestRate}%</div>
-          <div style={styles.resultLine}>
-            Repayment Period: {result.years} years (incl. {result.moratoriumMonths}-month moratorium)
+          <Row label={t('resScheme')} value={schemeName(result.schemeId, lang)} />
+          <Row label={t('resMaxLoan')} value={formatINR(result.loanAmount)} />
+          <Row label={t('resInterest')} value={`${result.interestRate}%`} />
+          <Row
+            label={t('resRepayment')}
+            value={`${result.years} ${t('yearsWord')} · ${t('moratoriumNote', {
+              n: result.moratoriumMonths,
+            })}`}
+          />
+
+          <div style={styles.instalment}>
+            <span style={styles.instalmentLabel}>{t('resInstalment')}</span>
+            <span style={styles.instalmentValue}>{formatINRDecimal(result.instalment)}</span>
           </div>
-          <div style={styles.eqiLine}>Estimated EQI: {formatINRDecimal(result.eqi)}</div>
+          <div style={styles.perMonth}>
+            {t('resMonthlySet')}: {formatINRDecimal(result.perMonth)}
+          </div>
+
+          <p style={styles.note}>{t('calcNote')}</p>
         </div>
       )}
+    </div>
+  );
+}
+
+function Row({ label, value }) {
+  return (
+    <div style={styles.row}>
+      <span style={styles.rowLabel}>{label}</span>
+      <span style={styles.rowValue}>{value}</span>
     </div>
   );
 }
@@ -74,8 +101,9 @@ const styles = {
     fontWeight: 700,
     fontSize: 15.5,
     width: '100%',
+    cursor: 'pointer',
   },
-  error: { color: 'var(--danger)', marginTop: 18 },
+  error: { color: 'var(--danger)', marginTop: 18, lineHeight: 1.6 },
   resultBox: {
     marginTop: 22,
     background: 'var(--card)',
@@ -83,6 +111,26 @@ const styles = {
     borderRadius: 'var(--radius-md)',
     padding: 20,
   },
-  resultLine: { fontSize: 15, marginBottom: 9, color: 'var(--ink)' },
-  eqiLine: { fontSize: 18, fontWeight: 800, color: 'var(--forest)', marginTop: 6 },
+  row: {
+    display: 'flex',
+    justifyContent: 'space-between',
+    gap: 14,
+    padding: '8px 0',
+    borderBottom: '1px solid rgba(0,0,0,0.06)',
+    flexWrap: 'wrap',
+  },
+  rowLabel: { fontSize: 14, color: 'var(--ink-muted)' },
+  rowValue: { fontSize: 14.5, color: 'var(--ink)', fontWeight: 600, textAlign: 'right' },
+  instalment: {
+    display: 'flex',
+    justifyContent: 'space-between',
+    alignItems: 'baseline',
+    gap: 12,
+    marginTop: 16,
+    flexWrap: 'wrap',
+  },
+  instalmentLabel: { fontSize: 14.5, color: 'var(--ink)' },
+  instalmentValue: { fontSize: 22, fontWeight: 800, color: 'var(--forest)' },
+  perMonth: { fontSize: 13, color: 'var(--ink-muted)', marginTop: 4 },
+  note: { fontSize: 12.5, color: 'var(--ink-muted)', lineHeight: 1.6, margin: '14px 0 0' },
 };
