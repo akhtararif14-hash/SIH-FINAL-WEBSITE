@@ -4,6 +4,7 @@ import { useState, useRef, useEffect } from 'react';
 import { useSearchParams } from 'next/navigation';
 import { useTranslate } from '@/lib/LanguageProvider';
 import RichText from '@/components/RichText';
+import Icon from '@/components/Icon';
 
 export default function ChatClient() {
   const { t } = useTranslate();
@@ -161,7 +162,7 @@ export default function ChatClient() {
             onClick={isRecording ? stopRecording : startRecording}
             title="Voice input"
           >
-            {isRecording ? '⏹' : '🎤'}
+            <Icon name={isRecording ? 'stop' : 'mic'} size={19} />
           </button>
         )}
         <button type="submit" style={styles.sendButton}>
@@ -227,9 +228,14 @@ const styles = {
     borderRadius: 21,
     border: 'none',
     background: 'var(--leaf)',
-    fontSize: 18,
+    // Centres the SVG icon inside the round button.
+    display: 'flex',
+    alignItems: 'center',
+    justifyContent: 'center',
+    color: 'var(--forest-dark)',
+    cursor: 'pointer',
   },
-  micButtonActive: { background: 'var(--danger)' },
+  micButtonActive: { background: 'var(--danger)', color: 'var(--white)' },
   sendButton: {
     background: 'var(--forest)',
     color: 'var(--white)',
