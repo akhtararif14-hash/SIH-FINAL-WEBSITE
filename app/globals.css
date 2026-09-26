@@ -325,7 +325,7 @@ button {
 }
 .onb-google:disabled { opacity: 0.6; }
 .onb-error {
-  background: #fdecea; color: var(--danger); border: 1px solid #f5c6c0;
+  background: #fdecea; color: var(--danger); border: 1px solid #f5cac5;
   border-radius: 10px; padding: 10px 12px; font-size: 13.5px; margin-top: 14px;
 }
 
