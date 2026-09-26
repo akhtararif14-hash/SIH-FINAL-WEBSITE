@@ -193,9 +193,9 @@ export default function OnboardingClient() {
         <h1>{x.welcome}</h1>
         <p>{x.tagline}</p>
         <ul className="onb-points">
-          <li>📍 {lang === 'hi' ? 'अपने इलाके के लिए सही बिज़नेस' : 'The right business for your area'}</li>
-          <li>💰 {lang === 'hi' ? 'लागत, मुनाफ़ा और सरकारी योजनाएं' : 'Costs, profit and government schemes'}</li>
-          <li>🗣️ {lang === 'hi' ? 'आपकी भाषा में सलाह' : 'Advice in your own language'}</li>
+          <li> {lang === 'hi' ? 'अपने इलाके के लिए सही बिज़नेस' : 'The right business for your area'}</li>
+          <li> {lang === 'hi' ? 'लागत, मुनाफ़ा और सरकारी योजनाएं' : 'Costs, profit and government schemes'}</li>
+          <li> {lang === 'hi' ? 'आपकी भाषा में सलाह' : 'Advice in your own language'}</li>
         </ul>
       </div>
 
