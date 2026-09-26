@@ -12,6 +12,7 @@
 // Once done, the browser remembers, so returning users skip all of it.
 
 import { useState } from 'react';
+import Icon from '@/components/Icon';
 import { useRouter } from 'next/navigation';
 import Image from 'next/image';
 import { signInWithPopup, signOut as fbSignOut } from 'firebase/auth';
@@ -192,9 +193,9 @@ export default function OnboardingClient() {
         <h1>{x.welcome}</h1>
         <p>{x.tagline}</p>
         <ul className="onb-points">
-          <li> {lang === 'hi' ? 'अपने इलाके के लिए सही बिज़नेस' : 'The right business for your area'}</li>
-          <li> {lang === 'hi' ? 'लागत, मुनाफ़ा और सरकारी योजनाएं' : 'Costs, profit and government schemes'}</li>
-          <li> {lang === 'hi' ? 'आपकी भाषा में सलाह' : 'Advice in your own language'}</li>
+          <li>📍 {lang === 'hi' ? 'अपने इलाके के लिए सही बिज़नेस' : 'The right business for your area'}</li>
+          <li>💰 {lang === 'hi' ? 'लागत, मुनाफ़ा और सरकारी योजनाएं' : 'Costs, profit and government schemes'}</li>
+          <li>🗣️ {lang === 'hi' ? 'आपकी भाषा में सलाह' : 'Advice in your own language'}</li>
         </ul>
       </div>
 
@@ -234,7 +235,7 @@ export default function OnboardingClient() {
 
             <div className="onb-choices">
               <button className="onb-choice" onClick={handleLogin} disabled={busy}>
-                <span className="onb-choice-icon">🔑</span>
+                <span className="onb-choice-icon"><Icon name="login" size={21} /></span>
                 <span>
                   <strong>{busy ? x.checking : x.login}</strong>
                   <small>{x.loginSub}</small>
@@ -247,7 +248,7 @@ export default function OnboardingClient() {
                 onClick={() => { setError(''); setNeedsSignup(false); setStage('signup'); }}
                 disabled={busy}
               >
-                <span className="onb-choice-icon">✨</span>
+                <span className="onb-choice-icon"><Icon name="userAdd" size={21} /></span>
                 <span>
                   <strong>{x.signup}</strong>
                   <small>{x.signupSub}</small>
