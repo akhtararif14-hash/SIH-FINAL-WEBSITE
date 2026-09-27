@@ -12,22 +12,15 @@ import { useTranslate } from '@/lib/LanguageProvider';
 import { getParamInfo } from '@/lib/advisor/paramInfo';
 import { advisorT } from '@/lib/advisor/i18n';
 import { useKeepState } from '@/lib/KeepState';
+import { preloadMap } from '@/lib/mapPreload';
 import { useProfile } from '@/lib/ProfileProvider';
 import { saveFile, buildLocationReportHtml } from '@/lib/userFiles';
 import Icon from '@/components/Icon';
 
-// Use Google Maps when a browser key exists, otherwise the free OpenStreetMap one.
-const USE_GOOGLE = Boolean(process.env.NEXT_PUBLIC_GOOGLE_MAPS_BROWSER_KEY);
-const loadMapModule = () =>
-  USE_GOOGLE
-    ? import('@/components/advisor/AdvisorMapGoogle')
-    : import('@/components/advisor/AdvisorMap');
-
-// Start downloading the map code the moment this page's script runs, instead of
-// waiting for React to mount the component. The map then appears almost at once.
-if (typeof window !== 'undefined') loadMapModule();
-
-const AdvisorMap = dynamic(loadMapModule, {
+// The map code is fetched by lib/mapPreload.js, which the app shell starts as
+// soon as the first page is idle. dynamic() reuses that same promise, so if the
+// download already finished the map renders immediately with no placeholder.
+const AdvisorMap = dynamic(() => preloadMap(), {
   ssr: false,
   loading: () => <div className="map-skeleton" style={{ height: 380, borderRadius: 14 }} />,
 });
@@ -81,10 +74,6 @@ export default function AdvisorClient() {
   const [reportB, setReportB] = useKeepState('advisor.reportB', null);
   const [selectedId, setSelectedId] = useKeepState('advisor.selectedId', null);
   const [, setStartedAt] = useKeepState('advisor.startedAt', null);
-
-  useEffect(() => {
-    loadMapModule();
-  }, []);
 
   const setPin = (lat, lng, label = '') => {
     const p = { lat, lng, label };

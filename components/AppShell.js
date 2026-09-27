@@ -15,6 +15,7 @@ import { useProfile } from '@/lib/ProfileProvider';
 import { LANGUAGES } from '@/lib/translations';
 import Icon from '@/components/Icon';
 import { useClearKeptState } from '@/lib/KeepState';
+import { preloadMap, preloadMapWhenIdle } from '@/lib/mapPreload';
 
 // All icons come from components/Icon.js — edit that file to change a logo.
 const NAV = [
@@ -47,6 +48,10 @@ export default function AppShell({ children }) {
     if (!ready || bare) return;
     if (!profile.onboarded) router.replace('/onboarding');
   }, [ready, bare, profile.onboarded, router]);
+
+  // Fetch the map code in the background so the Location Advisor opens with a
+  // map already there, instead of a grey box.
+  useEffect(() => preloadMapWhenIdle(), []);
 
   useEffect(() => {
     const close = (e) => {
@@ -83,7 +88,13 @@ export default function AppShell({ children }) {
 
         <nav className="side-nav">
           {NAV.map((item) => (
-            <Link key={item.href} href={item.href} className={`side-link ${isActive(item.href) ? 'on' : ''}`}>
+            <Link
+              key={item.href}
+              href={item.href}
+              className={`side-link ${isActive(item.href) ? 'on' : ''}`}
+              onMouseEnter={item.href === '/advisor' ? preloadMap : undefined}
+              onTouchStart={item.href === '/advisor' ? preloadMap : undefined}
+            >
               <Icon name={item.icon} onDark />
               <span>{t(item.key)}</span>
             </Link>
@@ -158,7 +169,12 @@ export default function AppShell({ children }) {
       {/* ---------- BOTTOM MENU (phones) ---------- */}
       <nav className="bottom-nav">
         {NAV.map((item) => (
-          <Link key={item.href} href={item.href} className={`bottom-link ${isActive(item.href) ? 'on' : ''}`}>
+          <Link
+            key={item.href}
+            href={item.href}
+            className={`bottom-link ${isActive(item.href) ? 'on' : ''}`}
+            onTouchStart={item.href === '/advisor' ? preloadMap : undefined}
+          >
             <Icon name={item.icon} size={21} />
             <span>{t(item.key)}</span>
           </Link>
