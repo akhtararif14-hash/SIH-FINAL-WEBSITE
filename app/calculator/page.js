@@ -4,15 +4,15 @@
 // the user picked. Scheme names come from lib/schemes.js, which is also
 // translated.
 
-import { useState } from 'react';
+import { useKeepState } from '@/lib/KeepState';
 import { useTranslate } from '@/lib/LanguageProvider';
 import { calculateLoan, formatINR, formatINRDecimal } from '@/lib/loanCalculator';
 import { schemeName } from '@/lib/schemes';
 
 export default function CalculatorPage() {
   const { t, lang } = useTranslate();
-  const [projectCost, setProjectCost] = useState('');
-  const [result, setResult] = useState(null);
+  const [projectCost, setProjectCost] = useKeepState('calculator.cost', '');
+  const [result, setResult] = useKeepState('calculator.result', null);
 
   const handleCalculate = (e) => {
     e.preventDefault();

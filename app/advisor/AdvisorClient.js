@@ -11,6 +11,7 @@ import dynamic from 'next/dynamic';
 import { useTranslate } from '@/lib/LanguageProvider';
 import { getParamInfo } from '@/lib/advisor/paramInfo';
 import { advisorT } from '@/lib/advisor/i18n';
+import { useKeepState } from '@/lib/KeepState';
 import { useProfile } from '@/lib/ProfileProvider';
 import { saveFile, buildLocationReportHtml } from '@/lib/userFiles';
 import Icon from '@/components/Icon';
@@ -60,25 +61,26 @@ export default function AdvisorClient() {
   const { t, lang } = useTranslate();
   const A = advisorT(lang);
   const { profile } = useProfile();
-  const [saved, setSaved] = useState(false);
+  const [saved, setSaved] = useKeepState('advisor.saved', false);
 
   // --- input state ---
-  const [pinA, setPinA] = useState(null);
-  const [pinB, setPinB] = useState(null);
-  const [picking, setPicking] = useState('A'); // which pin a map click sets
-  const [focus, setFocus] = useState(null);
-  const [query, setQuery] = useState('');
-  const [searchResults, setSearchResults] = useState([]);
-  const [radius, setRadius] = useState(5000);
-  const [budget, setBudget] = useState('');
-  const [interests, setInterests] = useState([]);
+  const [pinA, setPinA] = useKeepState('advisor.pinA', null);
+  const [pinB, setPinB] = useKeepState('advisor.pinB', null);
+  const [picking, setPicking] = useKeepState('advisor.picking', 'A'); // which pin a map click sets
+  const [focus, setFocus] = useKeepState('advisor.focus', null);
+  const [query, setQuery] = useKeepState('advisor.query', '');
+  const [searchResults, setSearchResults] = useKeepState('advisor.searchResults', []);
+  const [radius, setRadius] = useKeepState('advisor.radius', 5000);
+  const [budget, setBudget] = useKeepState('advisor.budget', '');
+  const [interests, setInterests] = useKeepState('advisor.interests', []);
 
   // --- output state ---
-  const [loading, setLoading] = useState(null); // 'A' | 'B' | 'search' | null
-  const [error, setError] = useState('');
-  const [report, setReport] = useState(null);
-  const [reportB, setReportB] = useState(null);
-  const [selectedId, setSelectedId] = useState(null);
+  const [loading, setLoading] = useKeepState('advisor.loading', null); // 'A' | 'B' | 'search' | null
+  const [error, setError] = useKeepState('advisor.error', '');
+  const [report, setReport] = useKeepState('advisor.report', null);
+  const [reportB, setReportB] = useKeepState('advisor.reportB', null);
+  const [selectedId, setSelectedId] = useKeepState('advisor.selectedId', null);
+  const [, setStartedAt] = useKeepState('advisor.startedAt', null);
 
   useEffect(() => {
     loadMapModule();
@@ -136,6 +138,7 @@ export default function AdvisorClient() {
     if (!pin) return setError(which === 'B' ? A('errPinBFirst') : A('errChooseFirst'));
     setLoading(which);
     setError('');
+    setStartedAt(Date.now()); // fresh timer for this run
     try {
       const res = await fetch('/api/advisor/analyze', {
         method: 'POST',
@@ -161,7 +164,10 @@ export default function AdvisorClient() {
     } catch (err) {
       setError(err.message);
     } finally {
+      // These run even if the user has already navigated away, because the
+      // setters write to the shared store, not to this component.
       setLoading(null);
+      setStartedAt(null);
     }
   };
 
@@ -171,7 +177,8 @@ export default function AdvisorClient() {
   const eligible = report?.ranked.filter((r) => r.eligible) || [];
   const filteredOut = report?.ranked.filter((r) => !r.eligible) || [];
   const selected = report?.ranked.find((r) => r.id === selectedId);
-  const displayName = (r) => (lang === 'hi' && r.nameHi ? r.nameHi : r.name);
+  // The server already localises the name, so just use it.
+  const displayName = (r) => r.name;
 
   return (
     <div className="page" style={{ maxWidth: 1040 }}>
@@ -468,24 +475,31 @@ function useA() {
 
 function AnalyzingPanel({ radius }) {
   const A = useA();
-  const [step, setStep] = useState(0);
-  const [seconds, setSeconds] = useState(0);
+  // The moment the study began is kept outside this component, so leaving the
+  // page and coming back shows the real elapsed time instead of restarting
+  // the counter at zero.
+  const [startedAt, setStartedAt] = useKeepState('advisor.startedAt', null);
+  const [, tick] = useState(0);
 
   useEffect(() => {
-    const tick = setInterval(() => setSeconds((v) => v + 1), 1000);
-    const next = setInterval(() => setStep((v) => Math.min(v + 1, STEP_COUNT - 1)), 3500);
-    return () => {
-      clearInterval(tick);
-      clearInterval(next);
-    };
+    if (!startedAt) setStartedAt(Date.now());
+  }, [startedAt, setStartedAt]);
+
+  useEffect(() => {
+    const id = setInterval(() => tick((v) => v + 1), 1000);
+    return () => clearInterval(id);
   }, []);
+
+  const elapsed = startedAt ? Math.floor((Date.now() - startedAt) / 1000) : 0;
+  const seconds = elapsed;
+  const step = Math.min(Math.floor(elapsed / 3.5), STEP_COUNT - 1);
 
   return (
     <div style={s.loadingBox} role="status" aria-live="polite">
       <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 10 }}>
         <span className="spinner" />
         <span style={{ fontWeight: 700, color: 'var(--forest)' }}>
-          Studying {(radius / 1000).toFixed(1)} km around your pin
+          {A('studyingRadius', { km: (radius / 1000).toFixed(1) })}
         </span>
         <span style={{ marginLeft: 'auto', fontSize: 12.5, color: 'var(--ink-muted)' }}>{seconds}s</span>
       </div>

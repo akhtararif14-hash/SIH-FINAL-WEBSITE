@@ -5,22 +5,23 @@ import { useSearchParams } from 'next/navigation';
 import { useTranslate } from '@/lib/LanguageProvider';
 import RichText from '@/components/RichText';
 import Icon from '@/components/Icon';
+import { useKeepState } from '@/lib/KeepState';
 
 export default function ChatClient() {
   const { t, lang } = useTranslate();
   const searchParams = useSearchParams();
   const presetQuestion = searchParams.get('q');
 
-  const [messages, setMessages] = useState([]);
-  const [input, setInput] = useState('');
-  const [loading, setLoading] = useState(false);
+  const [messages, setMessages] = useKeepState('chat.messages', []);
+  const [input, setInput] = useKeepState('chat.input', '');
+  const [loading, setLoading] = useKeepState('chat.loading', false);
   const [isRecording, setIsRecording] = useState(false);
   const [micSupported, setMicSupported] = useState(true);
 
   const mediaRecorderRef = useRef(null);
   const chunksRef = useRef([]);
   const bottomRef = useRef(null);
-  const sentPresetRef = useRef(false);
+  const [askedPresets, setAskedPresets] = useKeepState('chat.askedPresets', []);
 
   useEffect(() => {
     if (typeof navigator !== 'undefined' && !navigator.mediaDevices?.getUserMedia) {
@@ -44,8 +45,9 @@ export default function ChatClient() {
   }, [messages, loading]);
 
   useEffect(() => {
-    if (presetQuestion && !sentPresetRef.current) {
-      sentPresetRef.current = true;
+    // Only ask a preset question once, even across visits to this page.
+    if (presetQuestion && !askedPresets.includes(presetQuestion)) {
+      setAskedPresets([...askedPresets, presetQuestion]);
       sendMessage(presetQuestion);
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps

@@ -13,31 +13,17 @@ import { useTranslate } from '@/lib/LanguageProvider';
 import { useAuth } from '@/lib/AuthProvider';
 import { useProfile } from '@/lib/ProfileProvider';
 import { LANGUAGES } from '@/lib/translations';
+import Icon from '@/components/Icon';
+import { useClearKeptState } from '@/lib/KeepState';
 
-// Simple line icons, drawn inline so the app needs no icon library.
-const Icon = ({ d, size = 20 }) => (
-  <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
-    {d}
-  </svg>
-);
-const icons = {
-  home: <><path d="M3 10.5 12 3l9 7.5" /><path d="M5 10v10h14V10" /></>,
-  chat: <><path d="M21 15a2 2 0 0 1-2 2H8l-5 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z" /></>,
-  map: <><path d="M12 21s7-6.2 7-11a7 7 0 1 0-14 0c0 4.8 7 11 7 11z" /><circle cx="12" cy="10" r="2.6" /></>,
-  scheme: <><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" /><path d="M14 2v6h6" /><path d="M8 13h8M8 17h5" /></>,
-  calc: <><rect x="4" y="2" width="16" height="20" rx="2" /><path d="M8 6h8M8 11h2m3 0h3M8 15h2m3 0h3M8 19h8" /></>,
-  download: <><path d="M12 3v12" /><path d="m7 11 5 5 5-5" /><path d="M4 21h16" /></>,
-  user: <><circle cx="12" cy="8" r="4" /><path d="M4 21c0-4 3.6-6.5 8-6.5s8 2.5 8 6.5" /></>,
-  globe: <><circle cx="12" cy="12" r="9" /><path d="M3 12h18M12 3a15 15 0 0 1 0 18a15 15 0 0 1 0-18" /></>,
-};
-
+// All icons come from components/Icon.js — edit that file to change a logo.
 const NAV = [
-  { href: '/', key: 'home', icon: icons.home },
-  { href: '/chat', key: 'aiAdvisor', icon: icons.chat },
-  { href: '/advisor', key: 'locationAdvisor', icon: icons.map },
-  { href: '/schemes', key: 'schemes', icon: icons.scheme },
-  { href: '/calculator', key: 'calculator', icon: icons.calc },
-  { href: '/downloads', key: 'downloads', icon: icons.download },
+  { href: '/', key: 'home', icon: 'home' },
+  { href: '/chat', key: 'aiAdvisor', icon: 'chat' },
+  { href: '/advisor', key: 'locationAdvisor', icon: 'pin' },
+  { href: '/schemes', key: 'schemes', icon: 'doc' },
+  { href: '/calculator', key: 'calculator', icon: 'calculator' },
+  { href: '/downloads', key: 'downloads', icon: 'download' },
 ];
 
 // Pages that must NOT show the menu (the user is not set up yet).
@@ -49,6 +35,7 @@ export default function AppShell({ children }) {
   const { t, lang, setLang } = useTranslate();
   const { user, signOut } = useAuth();
   const { profile, ready, clearProfile } = useProfile();
+  const clearKept = useClearKeptState();
   const [langOpen, setLangOpen] = useState(false);
   const [menuOpen, setMenuOpen] = useState(false); // profile menu
   const boxRef = useRef(null);
@@ -97,7 +84,7 @@ export default function AppShell({ children }) {
         <nav className="side-nav">
           {NAV.map((item) => (
             <Link key={item.href} href={item.href} className={`side-link ${isActive(item.href) ? 'on' : ''}`}>
-              <Icon d={item.icon} />
+              <Icon name={item.icon} onDark />
               <span>{t(item.key)}</span>
             </Link>
           ))}
@@ -105,7 +92,7 @@ export default function AppShell({ children }) {
 
         <div className="side-bottom" ref={boxRef}>
           <button className="side-link" onClick={() => setLangOpen((v) => !v)}>
-            <Icon d={icons.globe} />
+            <Icon name="globe" onDark />
             <span>{LANGUAGES.find((l) => l.code === lang)?.label || t('chooseLanguage')}</span>
           </button>
           {langOpen && (
@@ -122,10 +109,11 @@ export default function AppShell({ children }) {
             onClick={async () => {
               if (user) await signOut();
               clearProfile();
+              clearKept(); // don't leave one person's data for the next
               router.replace('/onboarding');
             }}
           >
-            <Icon d={icons.user} />
+            <Icon name="user" onDark />
             <span>{user ? t('logout') : t('login')}</span>
           </button>
         </div>
@@ -154,6 +142,7 @@ export default function AppShell({ children }) {
                   setMenuOpen(false);
                   if (user) await signOut();
                   clearProfile();
+                  clearKept(); // don't leave one person's data for the next
                   router.replace('/onboarding');
                 }}
               >
@@ -170,7 +159,7 @@ export default function AppShell({ children }) {
       <nav className="bottom-nav">
         {NAV.map((item) => (
           <Link key={item.href} href={item.href} className={`bottom-link ${isActive(item.href) ? 'on' : ''}`}>
-            <Icon d={item.icon} size={21} />
+            <Icon name={item.icon} size={21} />
             <span>{t(item.key)}</span>
           </Link>
         ))}
