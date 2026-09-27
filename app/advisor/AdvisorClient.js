@@ -13,6 +13,7 @@ import { getParamInfo } from '@/lib/advisor/paramInfo';
 import { advisorT } from '@/lib/advisor/i18n';
 import { useKeepState } from '@/lib/KeepState';
 import { preloadMap } from '@/lib/mapPreload';
+import LoanSchemePanel from '@/components/advisor/LoanSchemePanel';
 import { useProfile } from '@/lib/ProfileProvider';
 import { saveFile, buildLocationReportHtml } from '@/lib/userFiles';
 import Icon from '@/components/Icon';
@@ -737,7 +738,7 @@ function FinancePanel({ r, ctx }) {
 
       <details style={{ marginTop: 10 }}>
         <summary style={{ cursor: 'pointer', fontSize: 12.5, color: 'var(--ink-muted)' }}>
-          What we assumed (change these in lib/advisor/finance.js)
+          What we assumed
         </summary>
         <ul style={{ margin: '6px 0 0', paddingLeft: 18, fontSize: 12.5, color: 'var(--ink-muted)' }}>
           {f.assumptions.map((a, i) => (
@@ -838,6 +839,8 @@ function BusinessCard({ rank, r, ctx, name, selected, onClick }) {
 
           <ReviewNotes r={r} ctx={ctx} />
           <FinancePanel r={r} ctx={ctx} />
+          {/* "How much loan?" and "Which scheme?" for THIS business. */}
+          <LoanSchemePanel finance={r.finance} />
         </div>
       )}
     </div>
