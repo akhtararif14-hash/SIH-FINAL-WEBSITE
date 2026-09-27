@@ -34,7 +34,7 @@ const AdvisorMap = dynamic(loadMapModule, {
 const INTEREST_IDS = ['food', 'retail', 'services', 'health', 'education'];
 
 // Labels come from the translations, so the filter chips follow the language.
-function interests(A) {
+function interestOptions(A) {
   return INTEREST_IDS.map((id) => ({ id, label: A(`cat_${id}`) }));
 }
 
@@ -276,7 +276,7 @@ export default function AdvisorClient() {
         </div>
         <div style={{ ...s.fieldLabel, marginTop: 14 }}>Interested in (leave empty for all):</div>
         <div style={s.row}>
-          {interests(A).map((i) => (
+          {interestOptions(A).map((i) => (
             <button key={i.id} style={{ ...s.chip, ...(interests.includes(i.id) ? s.chipOn : {}) }} onClick={() => toggleInterest(i.id)}>
               {i.label}
             </button>
