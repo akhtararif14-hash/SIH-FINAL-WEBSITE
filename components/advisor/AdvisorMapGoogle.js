@@ -10,6 +10,7 @@
 
 import { useEffect, useRef } from 'react';
 import { APIProvider, Map, AdvancedMarker, useMap } from '@vis.gl/react-google-maps';
+import { markGoogleMapsFailed } from '@/lib/mapPreload';
 
 const BROWSER_KEY = process.env.NEXT_PUBLIC_GOOGLE_MAPS_BROWSER_KEY;
 const MAP_ID = process.env.NEXT_PUBLIC_GOOGLE_MAP_ID || 'DEMO_MAP_ID';
@@ -85,7 +86,10 @@ export default function AdvisorMapGoogle({
 
   return (
     <div style={{ ...box(height), padding: 0, overflow: 'hidden' }}>
-      <APIProvider apiKey={BROWSER_KEY}>
+      <APIProvider
+        apiKey={BROWSER_KEY}
+        onError={(err) => markGoogleMapsFailed(String(err?.message || err || 'loader error'))}
+      >
         <Map
           defaultCenter={{ lat: start.lat, lng: start.lng }}
           defaultZoom={pinA ? 15 : 12}

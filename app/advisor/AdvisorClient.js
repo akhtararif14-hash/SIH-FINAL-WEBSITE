@@ -12,7 +12,6 @@ import { useTranslate } from '@/lib/LanguageProvider';
 import { getParamInfo } from '@/lib/advisor/paramInfo';
 import { advisorT } from '@/lib/advisor/i18n';
 import { useKeepState } from '@/lib/KeepState';
-import { preloadMap } from '@/lib/mapPreload';
 import LoanSchemePanel from '@/components/advisor/LoanSchemePanel';
 import { useProfile } from '@/lib/ProfileProvider';
 import { saveFile, buildLocationReportHtml } from '@/lib/userFiles';
@@ -21,7 +20,9 @@ import Icon from '@/components/Icon';
 // The map code is fetched by lib/mapPreload.js, which the app shell starts as
 // soon as the first page is idle. dynamic() reuses that same promise, so if the
 // download already finished the map renders immediately with no placeholder.
-const AdvisorMap = dynamic(() => preloadMap(), {
+// AdvisorMapAuto shows Google Maps, and switches itself to OpenStreetMap if
+// Google refuses the key. It lazily loads whichever map it settles on.
+const AdvisorMap = dynamic(() => import('@/components/advisor/AdvisorMapAuto'), {
   ssr: false,
   loading: () => <div className="map-skeleton" style={{ height: 380, borderRadius: 14 }} />,
 });
@@ -738,7 +739,7 @@ function FinancePanel({ r, ctx }) {
 
       <details style={{ marginTop: 10 }}>
         <summary style={{ cursor: 'pointer', fontSize: 12.5, color: 'var(--ink-muted)' }}>
-          What we assumed
+          What we assumed (change these in lib/advisor/finance.js)
         </summary>
         <ul style={{ margin: '6px 0 0', paddingLeft: 18, fontSize: 12.5, color: 'var(--ink-muted)' }}>
           {f.assumptions.map((a, i) => (
