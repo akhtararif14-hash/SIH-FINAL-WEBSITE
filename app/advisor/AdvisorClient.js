@@ -31,20 +31,19 @@ const AdvisorMap = dynamic(loadMapModule, {
   loading: () => <div className="map-skeleton" style={{ height: 380, borderRadius: 14 }} />,
 });
 
-const INTERESTS = [
-  { id: 'food', label: 'Food' },
-  { id: 'retail', label: 'Retail' },
-  { id: 'services', label: 'Services' },
-  { id: 'health', label: 'Health' },
-  { id: 'education', label: 'Education' },
-];
+const INTEREST_IDS = ['food', 'retail', 'services', 'health', 'education'];
+
+// Labels come from the translations, so the filter chips follow the language.
+function interests(A) {
+  return INTEREST_IDS.map((id) => ({ id, label: A(`cat_${id}`) }));
+}
 
 const rupees = (n) => '₹' + Number(n).toLocaleString('en-IN');
 
 // Reads an API reply safely. When the server times out or crashes it sends a
 // plain web page, not JSON — this turns that into a message a human can act on
 // instead of "Unexpected token 'A'".
-async function readJSON(res) {
+async function readJSON(res, A) {
   const text = await res.text();
   try {
     return JSON.parse(text);
@@ -109,7 +108,7 @@ export default function AdvisorClient() {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ q: query }),
       });
-      const data = await readJSON(res);
+      const data = await readJSON(res, A);
       if (!res.ok) throw new Error(data.error);
       setSearchResults(data.results);
       if (!data.results.length) setError(A('errNoPlace'));
@@ -151,7 +150,7 @@ export default function AdvisorClient() {
           explain: which === 'A', // one AI call per comparison is enough
         }),
       });
-      const data = await readJSON(res);
+      const data = await readJSON(res, A);
       if (!res.ok) throw new Error(data.error || A('errAnalysisFailed'));
       if (which === 'B') setReportB(data);
       else {
@@ -277,7 +276,7 @@ export default function AdvisorClient() {
         </div>
         <div style={{ ...s.fieldLabel, marginTop: 14 }}>Interested in (leave empty for all):</div>
         <div style={s.row}>
-          {INTERESTS.map((i) => (
+          {interests(A).map((i) => (
             <button key={i.id} style={{ ...s.chip, ...(interests.includes(i.id) ? s.chipOn : {}) }} onClick={() => toggleInterest(i.id)}>
               {i.label}
             </button>
@@ -452,14 +451,12 @@ function anchorShort(A) {
 
 // Shown while a location is being studied. The steps are the real work the
 // server is doing, so the user can see progress instead of a frozen button.
-const ANALYZE_STEPS = [
-  A('step1'),
-  A('step2'),
-  A('step3'),
-  A('step4'),
-  A('step5'),
-  A('step6'),
-];
+// A function, not a constant: the step names need the chosen language, and
+// there is no language yet when this file is first imported.
+const STEP_COUNT = 6;
+function analyzeSteps(A) {
+  return Array.from({ length: STEP_COUNT }, (_, i) => A(`step${i + 1}`));
+}
 
 
 // Every sub-component below is a client component in this same file, so it
@@ -476,7 +473,7 @@ function AnalyzingPanel({ radius }) {
 
   useEffect(() => {
     const tick = setInterval(() => setSeconds((v) => v + 1), 1000);
-    const next = setInterval(() => setStep((v) => Math.min(v + 1, ANALYZE_STEPS.length - 1)), 3500);
+    const next = setInterval(() => setStep((v) => Math.min(v + 1, STEP_COUNT - 1)), 3500);
     return () => {
       clearInterval(tick);
       clearInterval(next);
@@ -498,7 +495,7 @@ function AnalyzingPanel({ radius }) {
       </div>
 
       <ul style={{ listStyle: 'none', margin: '12px 0 0', padding: 0 }}>
-        {ANALYZE_STEPS.map((label, i) => (
+        {analyzeSteps(A).map((label, i) => (
           <li
             key={label}
             style={{
@@ -591,19 +588,23 @@ function MetricRow({ label, value, color, infoKey, r, ctx, indent = false }) {
   );
 }
 
-const SWOT_BOXES = [
-  { key: 'strengths', title: 'Strengths', sub: A('swotGood'), bg: '#eaf3ec', border: '#7cb68c', color: '#1f3b28' },
-  { key: 'weaknesses', title: 'Weaknesses', sub: A('swotMissing'), bg: '#fdecea', border: '#e6a9a2', color: '#7a2318' },
-  { key: 'opportunities', title: 'Opportunities', sub: A('swotGaps'), bg: '#f3eefb', border: '#b9a6de', color: '#3f2a63' },
-  { key: 'threats', title: 'Threats', sub: A('swotWrong'), bg: '#fdf3e2', border: '#e0bc7c', color: '#7a5312' },
-];
+// Built inside the component, not at module level: the titles need the
+// chosen language, and there is no language yet when this file is imported.
+function swotBoxes(A) {
+  return [
+    { key: 'strengths', title: A('repStrengths'), sub: A('swotGood'), bg: '#eaf3ec', border: '#7cb68c', color: '#1f3b28' },
+    { key: 'weaknesses', title: A('repWeaknesses'), sub: A('swotMissing'), bg: '#fdecea', border: '#e6a9a2', color: '#7a2318' },
+    { key: 'opportunities', title: A('repOpportunities'), sub: A('swotGaps'), bg: '#f3eefb', border: '#b9a6de', color: '#3f2a63' },
+    { key: 'threats', title: A('repThreats'), sub: A('swotWrong'), bg: '#fdf3e2', border: '#e0bc7c', color: '#7a5312' },
+  ];
+}
 
 function SwotGrid({ swot }) {
   const A = useA();
   if (!swot) return null;
   return (
     <div style={s.swotGrid}>
-      {SWOT_BOXES.map((box) => {
+      {swotBoxes(A).map((box) => {
         const items = swot[box.key] || [];
         return (
           <div key={box.key} style={{ ...s.swotBox, background: box.bg, borderColor: box.border }}>
