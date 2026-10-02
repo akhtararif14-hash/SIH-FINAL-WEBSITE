@@ -34,7 +34,7 @@ cp .env.local.example .env.local
 npm run dev
 ```
 
-Visit http://localhost:3000.
+Visit https://sih-final-website.vercel.app.
 
 ## Environment variables you need
 
